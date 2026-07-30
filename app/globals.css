@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --background: #111111;
+  --foreground: #ffffff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light Theme Styling */
+html.light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light header {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1);
+  color: #0f172a !important;
+}
+
+html.light header svg path {
+  fill: #0f172a;
+  stroke: #0f172a;
+}
+
+html.light .text-gray-300 {
+  color: #334155 !important;
+}
+
+html.light .text-gray-400 {
+  color: #475569 !important;
+}
+
+html.light .text-gray-500 {
+  color: #64748b !important;
+}
+
+html.light .border-white\/10,
+html.light .border-white\/20,
+html.light .border-white\/30 {
+  border-color: rgba(15, 23, 42, 0.15) !important;
+}
+
+html.light canvas {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html.light footer {
+  background-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+html.light #about-me-btn {
+  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.15);
+}
