@@ -1,19 +1,11 @@
-import { auth } from '@/auth';
-import { NextResponse } from 'next/server';
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    if (!req.auth) {
-      const loginUrl = new URL('/admin/login', req.url);
-      loginUrl.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  return NextResponse.next();
-});
+/**
+ * Middleware uses only the Edge-Runtime-safe authConfig.
+ * No Node.js-only imports (Mongoose, crypto, EventEmitter) are pulled in here.
+ */
+export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: ['/admin/:path*'],

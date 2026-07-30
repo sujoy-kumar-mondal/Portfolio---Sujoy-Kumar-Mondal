@@ -5,11 +5,11 @@ import AdminUser from '@/models/AdminUser';
 import OTP from '@/models/OTP';
 import crypto from 'crypto';
 import { sessionEmitter } from '@/lib/sessionEvents';
+import { authConfig } from './auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   basePath: '/api/auth',
-  secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true,
   providers: [
     Credentials({
       name: 'credentials',
@@ -65,22 +65,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: 'jwt' },
-  pages: { signIn: '/admin/login' },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.sessionToken = (user as { sessionToken?: string }).sessionToken;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        (session.user as { id?: string }).id = token.id as string;
-        (session.user as { sessionToken?: string }).sessionToken = token.sessionToken as string;
-      }
-      return session;
-    },
-  },
 });
