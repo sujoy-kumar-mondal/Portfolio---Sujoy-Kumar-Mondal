@@ -49,12 +49,22 @@ export default function AdminLoginPage() {
     setError('');
     try {
       const result = await signIn('credentials', {
-        email, password, otp,
+        email,
+        password,
+        otp,
         step: 'otp',
         redirect: false,
       });
-      if (result?.error) throw new Error('Invalid or expired OTP');
-      router.push('/admin/dashboard');
+      if (result?.error) {
+        throw new Error(
+          result.error === 'CredentialsSignin'
+            ? 'Invalid or expired OTP. Please try again.'
+            : result.error
+        );
+      }
+      // Use hard redirect to ensure the session cookie is picked up correctly
+      // (router.push can miss newly-set cookies on Vercel/HTTPS environments)
+      window.location.href = '/admin/dashboard';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'OTP verification failed');
     } finally {
