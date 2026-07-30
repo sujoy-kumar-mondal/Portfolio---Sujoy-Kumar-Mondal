@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   phone?: string;
@@ -8,8 +9,10 @@ interface HeaderProps {
 }
 
 export default function Header({ phone, whatsapp }: HeaderProps) {
+  const router = useRouter();
   const [darkMode, setDarkMode] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -21,7 +24,18 @@ export default function Header({ phone, whatsapp }: HeaderProps) {
       setDarkMode(true);
       document.documentElement.classList.remove('light');
     }
-  }, []);
+
+    // Secret shortcut: Ctrl + Shift + A to open Admin Login
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        router.push('/admin/login');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   const toggleTheme = () => {
     const nextMode = !darkMode;
@@ -35,12 +49,25 @@ export default function Header({ phone, whatsapp }: HeaderProps) {
     }
   };
 
+  // Secret 3-Click on Header Logo opens Admin Login
+  const handleLogoClick = (e: React.MouseEvent) => {
+    const nextCount = clickCount + 1;
+    if (nextCount >= 3) {
+      e.preventDefault();
+      router.push('/admin/login');
+      setClickCount(0);
+    } else {
+      setClickCount(nextCount);
+      setTimeout(() => setClickCount(0), 1200);
+    }
+  };
+
   const tel = phone?.replace(/\D/g, '') || '9002842851';
   const wa = whatsapp || tel;
 
   return (
     <header className="h-20 bg-white/10 backdrop-blur-sm z-50 rounded pointer-events-none flex items-center justify-between w-full px-4 max-w-screen-2xl mx-auto sticky top-0 transition-colors">
-      <Link className="pointer-events-auto" href="/">
+      <Link className="pointer-events-auto" href="/" onClick={handleLogoClick}>
         <svg width="25" viewBox="0 0 224 473" fill="currentColor" stroke="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M75 429L1 472V322L75 281V429Z" fill="white" />
           <path d="M152 322V386L223 344V281L75 196V126L152 171V238.715L223 196V126L1 1V236L152 322Z" fill="white" />
@@ -71,7 +98,6 @@ export default function Header({ phone, whatsapp }: HeaderProps) {
             title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {darkMode ? (
-              /* Sun icon (to switch to light mode) */
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
@@ -84,7 +110,6 @@ export default function Header({ phone, whatsapp }: HeaderProps) {
                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
               </svg>
             ) : (
-              /* Moon icon (to switch to dark mode) */
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-800">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>

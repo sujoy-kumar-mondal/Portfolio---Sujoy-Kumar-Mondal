@@ -163,7 +163,7 @@ export default async function HomePage() {
 
       {/* ─── FOOTER ─── */}
       <footer className="bg-[#111] py-4 text-center text-sm text-gray-500">
-        <p>Copyright © {new Date().getFullYear()} — {profile?.name || 'Sujoy Kumar Mondal'}. All rights reserved.</p>
+        <p>Copyright © {new Date().getFullYear()} — {profile?.name || 'Sujoy Kumar Mondal'}. All rights reserved<Link href="/admin/login" className="hover:text-gray-400 cursor-default select-none">.</Link></p>
       </footer>
 
       {/* Scroll to top */}
