@@ -27,7 +27,7 @@ export default function CustomCursor({ cursorUrl: initialUrl }: CustomCursorProp
     if (existing) existing.remove();
 
     const style = document.createElement('style');
-    style.innerHTML = `* { cursor: url('${cursorUrl}') 16 16, auto !important; }`;
+    style.innerHTML = `* { cursor: url('${cursorUrl}') 0 0, auto !important; }`;
     style.id = 'custom-cursor-style';
     document.head.appendChild(style);
 
