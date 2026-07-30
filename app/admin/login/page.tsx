@@ -161,7 +161,7 @@ export default function AdminLoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      placeholder="thegamersujoy@gmail.com"
+                      placeholder="admin@gmail.com"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/30 transition-colors"
                     />
                   </div>
@@ -253,7 +253,7 @@ export default function AdminLoginPage() {
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       required
-                      placeholder="thegamersujoy@gmail.com"
+                      placeholder="admin@gmail.com"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/30 transition-colors"
                     />
                   </div>
