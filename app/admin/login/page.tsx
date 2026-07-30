@@ -48,6 +48,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError('');
     try {
+      // Step 1: Validate OTP without redirecting so we can catch errors
       const result = await signIn('credentials', {
         email,
         password,
@@ -62,12 +63,20 @@ export default function AdminLoginPage() {
             : result.error
         );
       }
-      // Use hard redirect to ensure the session cookie is picked up correctly
-      // (router.push can miss newly-set cookies on Vercel/HTTPS environments)
-      window.location.href = '/admin/dashboard';
+      // Step 2: OTP valid — let NextAuth do the server-side redirect so the
+      // session cookie is guaranteed to be set before the browser navigates.
+      // This avoids the cookie-timing issue on Vercel HTTPS without a full
+      // window.location reload breaking the SPA experience.
+      await signIn('credentials', {
+        email,
+        password,
+        otp,
+        step: 'otp',
+        callbackUrl: '/admin/dashboard',
+        redirect: true,
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'OTP verification failed');
-    } finally {
       setLoading(false);
     }
   };
