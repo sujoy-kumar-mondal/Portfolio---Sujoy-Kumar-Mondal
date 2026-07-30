@@ -48,7 +48,6 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError('');
     try {
-      // Step 1: Validate OTP without redirecting so we can catch errors
       const result = await signIn('credentials', {
         email,
         password,
@@ -57,29 +56,19 @@ export default function AdminLoginPage() {
         redirect: false,
       });
       if (result?.error) {
-        throw new Error(
-          result.error === 'CredentialsSignin'
-            ? 'Invalid or expired OTP. Please try again.'
-            : result.error
-        );
+        throw new Error('Invalid or expired OTP. Please try again.');
       }
-      // Step 2: OTP valid — let NextAuth do the server-side redirect so the
-      // session cookie is guaranteed to be set before the browser navigates.
-      // This avoids the cookie-timing issue on Vercel HTTPS without a full
-      // window.location reload breaking the SPA experience.
-      await signIn('credentials', {
-        email,
-        password,
-        otp,
-        step: 'otp',
-        callbackUrl: '/admin/dashboard',
-        redirect: true,
-      });
+      // router.refresh() tells Next.js to re-fetch server components & re-read
+      // the new session cookie — no full page reload, fully SPA-compatible.
+      router.refresh();
+      router.push('/admin/dashboard');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'OTP verification failed');
+    } finally {
       setLoading(false);
     }
   };
+
 
   const handleRequestForgotOTP = async (e: React.FormEvent) => {
     e.preventDefault();
