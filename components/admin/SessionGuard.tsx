@@ -17,8 +17,8 @@ export default function SessionGuard() {
             signOut({ callbackUrl: '/admin/login' });
           }
         }
-      } catch (e) {
-        console.error('Session fallback check failed:', e);
+      } catch {
+        // Silently handle transient network drops or aborted fetches during page navigation/reload
       }
     };
 
@@ -34,8 +34,8 @@ export default function SessionGuard() {
             if (eventSource) eventSource.close();
             signOut({ callbackUrl: '/admin/login' });
           }
-        } catch (e) {
-          console.error('Error parsing SSE message:', e);
+        } catch {
+          // Ignore parsing errors
         }
       };
 
@@ -43,12 +43,12 @@ export default function SessionGuard() {
         // SSE disconnected (e.g. laptop went to sleep or network drop)
         // Fallback polling will handle checking session state on reconnect
       };
-    } catch (e) {
-      console.error('Failed to initialize SSE EventSource:', e);
+    } catch {
+      // Ignore SSE init errors
     }
 
-    // 2. Fallback Polling (Every 5 seconds) & Window Focus Event for sleep/wake recovery
-    fallbackInterval = setInterval(checkSessionFallback, 5000);
+    // 2. Fallback Polling (Every 10 seconds) & Window Focus Event for sleep/wake recovery
+    fallbackInterval = setInterval(checkSessionFallback, 10000);
     const onFocus = () => checkSessionFallback();
     window.addEventListener('focus', onFocus);
 
