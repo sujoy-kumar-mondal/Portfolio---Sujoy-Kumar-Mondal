@@ -7,8 +7,9 @@ interface ContactInfo {
   addressMapUrl: string;
   mapEmbedUrl: string;
   phone: string;
-  whatsapp: string;
+  phoneUrl: string;
   email: string;
+  emailUrl: string;
   contactFormRecipient: string;
   getInTouchTitle: string;
   letsMeetTitle: string;
@@ -16,8 +17,8 @@ interface ContactInfo {
 
 export default function AdminContactPage() {
   const [info, setInfo] = useState<ContactInfo>({
-    address: '', addressMapUrl: '', mapEmbedUrl: '', phone: '', whatsapp: '', email: '',
-    contactFormRecipient: '', getInTouchTitle: 'Get in Touch', letsMeetTitle: "Let's Meet",
+    address: '', addressMapUrl: '', mapEmbedUrl: '', phone: '', phoneUrl: '', email: '', emailUrl: '',
+    contactFormRecipient: '', getInTouchTitle: "", letsMeetTitle: "",
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -25,7 +26,7 @@ export default function AdminContactPage() {
 
   useEffect(() => {
     fetch('/api/admin/contact').then(r => r.json()).then(data => {
-      if (data) setInfo({ ...data, whatsapp: data.whatsapp || data.phone || '' });
+      if (data) setInfo(data);
       setLoading(false);
     });
   }, []);
@@ -110,15 +111,22 @@ export default function AdminContactPage() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
               </div>
               <div>
-                <label className="text-sm text-gray-300 block mb-1.5">WhatsApp Number</label>
-                <input type="tel" value={info.whatsapp} onChange={e => set('whatsapp')(e.target.value)}
+                <label className="text-sm text-gray-300 block mb-1.5">URL</label>
+                <input type="url" value={info.phoneUrl || ""} onChange={e => set('phoneUrl')(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
               </div>
             </div>
-            <div>
-              <label className="text-sm text-gray-300 block mb-1.5">Display Email Address</label>
-              <input type="email" value={info.email} onChange={e => set('email')(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-gray-300 block mb-1.5">Email Address</label>
+                <input type="email" value={info.email} onChange={e => set('email')(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
+              </div>
+              <div>
+                <label className="text-sm text-gray-300 block mb-1.5">URL</label>
+                <input type="url" value={info.emailUrl || ""} onChange={e => set('emailUrl')(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
+              </div>
             </div>
           </section>
         </div>

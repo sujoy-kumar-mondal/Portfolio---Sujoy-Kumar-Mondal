@@ -9,17 +9,15 @@ export interface HeaderSocialLink {
   url: string;
   svgPath: string;
   hoverColor: string;
-  position?: 'top' | 'right' | 'both';
+  position?: 'top' | 'right';
   isActive?: boolean;
 }
 
 interface HeaderProps {
-  phone?: string;
-  whatsapp?: string;
   links?: HeaderSocialLink[];
 }
 
-export default function Header({ phone, whatsapp, links }: HeaderProps) {
+export default function Header({ links }: HeaderProps) {
   const router = useRouter();
   const [darkMode, setDarkMode] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -75,12 +73,9 @@ export default function Header({ phone, whatsapp, links }: HeaderProps) {
 
   const topSocials = links
     ? links
-        .filter(l => l.isActive !== false && (l.position === 'top' || l.position === 'both'))
-        .sort((a, b) => ((a as { order?: number }).order ?? 0) - ((b as { order?: number }).order ?? 0))
+      .filter(l => l.isActive !== false && (l.position === 'top'))
+      .sort((a, b) => ((a as { order?: number }).order ?? 0) - ((b as { order?: number }).order ?? 0))
     : [];
-
-  const phoneLink = phone ? (phone.startsWith('tel:') ? phone : `tel:${phone.replace(/\D/g, '')}`) : 'tel:9002842851';
-  const whatsappLink = whatsapp ? (whatsapp.startsWith('http') ? whatsapp : `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=Hi, How are you?`) : 'https://wa.me/9002842851?text=Hi, How are you?';
 
   return (
     <header className="h-20 bg-white/10 backdrop-blur-sm z-50 rounded pointer-events-none flex items-center justify-between w-full px-4 max-w-screen-2xl mx-auto sticky top-0 transition-colors">
@@ -95,35 +90,20 @@ export default function Header({ phone, whatsapp, links }: HeaderProps) {
       <div className="flex gap-6 sm:gap-8 items-center">
         {/* Dynamic Top Social Links (Navbar) */}
         <div className="flex items-center gap-4">
-          {topSocials.length > 0 ? (
-            topSocials.map(link => (
-              <a
-                key={link._id || link.platform}
-                className="pointer-events-auto transition-all duration-200 hover:scale-110 flex items-center justify-center text-[#b0b2c3]"
-                href={link.url}
-                target={link.url.startsWith('http') ? '_blank' : '_self'}
-                rel="noopener noreferrer"
-                title={link.platform}
-                style={{ color: '#b0b2c3' }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = link.hoverColor || '#ffffff')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#b0b2c3')}
-                dangerouslySetInnerHTML={{ __html: link.svgPath }}
-              />
-            ))
-          ) : (
-            <>
-              <a className="pointer-events-auto hover:text-cyan-400 transition-colors text-white" href={phoneLink} title="Call me">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-              </a>
-              <a className="pointer-events-auto hover:text-green-400 transition-colors text-white" href={whatsappLink} target="_blank" rel="noopener noreferrer" title="WhatsApp">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 448 512">
-                  <path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z" />
-                </svg>
-              </a>
-            </>
-          )}
+          {topSocials.map(link => (
+            <a
+              key={link._id || link.platform}
+              className="pointer-events-auto transition-all duration-200 hover:scale-130 hover:drop-shadow-[0px_0px_10px_rgba(255,255,255,0.8)] flex items-center justify-center text-[#b0b2c3]"
+              href={link.url}
+              target={link.url.startsWith('http') ? '_blank' : '_self'}
+              rel="noopener noreferrer"
+              title={link.platform}
+              style={{ color: '#b0b2c3' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = link.hoverColor || '#ffffff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#b0b2c3')}
+              dangerouslySetInnerHTML={{ __html: link.svgPath }}
+            />
+          ))}
         </div>
 
         {/* Theme Toggle Button */}
@@ -135,7 +115,7 @@ export default function Header({ phone, whatsapp, links }: HeaderProps) {
             title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {darkMode ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 hover:scale-120 transition-all duration-200">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
                 <line x1="12" y1="21" x2="12" y2="23" />
@@ -147,7 +127,7 @@ export default function Header({ phone, whatsapp, links }: HeaderProps) {
                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-800">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-800 hover:scale-120 transition-all duration-200">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             )}

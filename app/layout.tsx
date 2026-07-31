@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   description: 'Full-stack developer and web designer from Purba Medinipur. Explore my projects, skills, and get in touch.',
   keywords: ['portfolio', 'web developer', 'full stack', 'Sujoy Kumar Mondal'],
   icons: {
-    icon: '/name-logo-color2.svg',
-    shortcut: '/name-logo-color2.svg',
-    apple: '/name-logo-color2.svg',
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
   },
   openGraph: {
     title: 'Sujoy Kumar Mondal - Portfolio',

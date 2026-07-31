@@ -11,8 +11,8 @@ export interface IProfile extends Document {
 }
 
 const ProfileSchema = new Schema<IProfile>({
-  name: { type: String, default: 'Sujoy Kumar Mondal' },
-  intro: { type: String, default: 'I am a Web Developer' },
+  name: { type: String, default: '' },
+  intro: { type: String, default: '' },
   about: { type: String, default: '' },
   photoUrl: { type: String, default: '' },
   cvUrl: { type: String, default: '' },

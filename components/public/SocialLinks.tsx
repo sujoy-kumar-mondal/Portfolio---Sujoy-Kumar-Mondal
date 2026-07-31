@@ -7,7 +7,7 @@ interface SocialLink {
   svgPath: string;
   hoverColor: string;
   order?: number;
-  position?: 'top' | 'right' | 'both';
+  position?: 'top' | 'right';
   isActive?: boolean;
 }
 
@@ -15,7 +15,7 @@ export default function SocialLinks({ links }: { links: SocialLink[] }) {
   if (!links || links.length === 0) return null;
 
   const rightLinks = links
-    .filter(l => l.isActive !== false && (l.position === 'right' || l.position === 'both' || !l.position))
+    .filter(l => l.isActive !== false && (l.position === 'right' || !l.position))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   if (rightLinks.length === 0) return null;
@@ -28,7 +28,7 @@ export default function SocialLinks({ links }: { links: SocialLink[] }) {
             href={link.url}
             target={link.url.startsWith('http') ? '_blank' : '_self'}
             rel="noopener noreferrer"
-            className="block hover:drop-shadow-[0px_0px_10px_rgba(255,255,255,0.8)] transition-all duration-200"
+            className="block hover:scale-130 hover:drop-shadow-[0px_0px_10px_rgba(255,255,255,0.8)] transition-all duration-200"
             style={{ color: '#b0b2c3' }}
             onMouseEnter={(e) => (e.currentTarget.style.color = link.hoverColor || '#ffffff')}
             onMouseLeave={(e) => (e.currentTarget.style.color = '#b0b2c3')}
