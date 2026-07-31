@@ -1,20 +1,14 @@
-import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 /**
- * Named "middleware" export required by Next.js 16+.
- * Uses Edge-Runtime-safe authConfig only — no Node.js/Mongoose imports.
- * Uses getToken with the correct cookie names for NextAuth v5.
+ * Next.js 16 Proxy Convention (replacing deprecated middleware.ts).
+ * Protects all /admin routes except /admin/login.
  */
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    // NextAuth v5 cookie names (different from v4):
-    //   HTTP:  authjs.session-token
-    //   HTTPS: __Secure-authjs.session-token
     const token = await getToken({
       req,
       secret: process.env.NEXTAUTH_SECRET,
@@ -34,6 +28,9 @@ export async function middleware(req: NextRequest) {
 
   return NextResponse.next();
 }
+
+// Support both 'proxy' and 'middleware' exports for compatibility
+export const middleware = proxy;
 
 export const config = {
   matcher: ['/admin/:path*'],
