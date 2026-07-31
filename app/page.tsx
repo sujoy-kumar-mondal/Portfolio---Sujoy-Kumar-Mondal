@@ -55,7 +55,11 @@ export default async function HomePage() {
     getContactInfo(),
   ]);
 
-  const phone = contactInfo?.phone?.replace(/\D/g, '') || '9002842851';
+  const phoneSocial = socialLinks.find((s: { platform: string; url: string }) => s.platform?.toLowerCase().includes('phone') || s.platform?.toLowerCase().includes('call'));
+  const waSocial = socialLinks.find((s: { platform: string; url: string }) => s.platform?.toLowerCase().includes('whatsapp'));
+
+  const phoneVal = phoneSocial?.url || contactInfo?.phone;
+  const whatsappVal = waSocial?.url || contactInfo?.whatsapp || contactInfo?.phone;
 
   return (
     <>
@@ -65,7 +69,7 @@ export default async function HomePage() {
       <section id="section-1" className="flex flex-col justify-between min-h-screen pb-10 xl:pb-0 relative overflow-hidden">
         <SpiderCanvas />
         <div className="relative z-10">
-          <Header phone={contactInfo?.phone} whatsapp={phone} />
+          <Header phone={phoneVal} whatsapp={whatsappVal} />
         </div>
 
         {/* Main hero content */}
