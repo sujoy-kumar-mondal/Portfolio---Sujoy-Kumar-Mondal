@@ -32,11 +32,46 @@ export default function AdminSocialPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Phone & WhatsApp Direct Edit State
+  const [phone, setPhone] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
+
   useEffect(() => {
-    fetch('/api/admin/social').then(r => r.json()).then(data => { setLinks(data); setLoading(false); });
+    Promise.all([
+      fetch('/api/admin/social').then(r => r.json()),
+      fetch('/api/admin/contact').then(r => r.json()),
+    ]).then(([socialData, contactData]) => {
+      if (Array.isArray(socialData)) setLinks(socialData);
+      if (contactData) {
+        setPhone(contactData.phone || '');
+        setWhatsapp(contactData.whatsapp || contactData.phone || '');
+      }
+      setLoading(false);
+    });
   }, []);
 
   const refresh = () => fetch('/api/admin/social').then(r => r.json()).then(setLinks);
+
+  const saveContactNumbers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactSaving(true);
+    setContactSaved(false);
+    try {
+      await fetch('/api/admin/contact', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, whatsapp }),
+      });
+      setContactSaved(true);
+      setTimeout(() => setContactSaved(false), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setContactSaving(false);
+    }
+  };
 
   const handlePreset = (platform: string) => {
     const preset = PRESET_ICONS[platform];
@@ -67,59 +102,122 @@ export default function AdminSocialPage() {
   };
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#0a0a0a]">
       <AdminSidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 min-w-0 overflow-x-hidden">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">Social Links</h1>
-              <p className="text-gray-500 text-sm">Manage all your social media links and icons</p>
+              <h1 className="text-2xl font-bold text-white">Social Links & Direct Contact</h1>
+              <p className="text-gray-500 text-sm">Manage social media links, Phone icon link & WhatsApp contact</p>
             </div>
             <button
               onClick={() => { setEditing({ ...emptyLink }); setIsNew(true); }}
-              className="px-4 py-2 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold hover:scale-105 transition-transform text-white"
+              className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold hover:scale-105 transition-transform text-white self-start sm:self-auto"
             >
-              + Add Link
+              + Add Social Link
             </button>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" /></div>
-          ) : (
-            <div className="space-y-3">
-              {links.map(link => (
-                <div key={link._id} className={`bg-[#111] border rounded-xl p-4 flex items-center gap-4 ${link.isActive ? 'border-white/10' : 'border-white/5 opacity-50'}`}>
-                  <div className="w-8 h-8 flex items-center justify-center text-gray-400" dangerouslySetInnerHTML={{ __html: link.svgPath }} style={{ color: link.hoverColor }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white text-sm">{link.platform}</p>
-                    <p className="text-gray-500 text-xs truncate">{link.url}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => toggleActive(link)} className={`text-xs px-2 py-1 rounded border transition-colors ${link.isActive ? 'border-green-500/30 text-green-400' : 'border-white/10 text-gray-600'}`}>
-                      {link.isActive ? 'Active' : 'Hidden'}
-                    </button>
-                    <button onClick={() => { setEditing({ ...link }); setIsNew(false); }} className="text-xs px-3 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors">Edit</button>
-                    <button onClick={() => del(link._id!)} className="text-xs px-2 py-1 hover:text-red-400 transition-colors">✕</button>
-                  </div>
-                </div>
-              ))}
-              {links.length === 0 && <div className="text-center py-16 text-gray-600">No social links yet. Click &quot;Add Link&quot; to add one.</div>}
+          {/* Quick Direct Contact Numbers (Phone & WhatsApp) */}
+          <section className="bg-[#111] border border-white/10 rounded-2xl p-5 sm:p-6 space-y-4">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <span>📞</span> Phone & WhatsApp Header Links
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                These numbers control the quick call (tel:) and WhatsApp icon buttons at the top of your portfolio header.
+              </p>
             </div>
-          )}
+
+            <form onSubmit={saveContactNumbers} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-300 block mb-1.5 font-medium">
+                  Phone Number (Call Icon)
+                </label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="+91 9002842851"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-300 block mb-1.5 font-medium">
+                  WhatsApp Number (WhatsApp Icon)
+                </label>
+                <input
+                  type="text"
+                  value={whatsapp}
+                  onChange={e => setWhatsapp(e.target.value)}
+                  placeholder="+91 9002842851"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+                />
+              </div>
+
+              <div className="sm:col-span-2 flex items-center justify-between pt-1">
+                <span className="text-xs text-emerald-400">
+                  {contactSaved ? '✓ Contact numbers saved successfully!' : ''}
+                </span>
+                <button
+                  type="submit"
+                  disabled={contactSaving}
+                  className="px-5 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
+                >
+                  {contactSaving ? 'Saving...' : 'Save Phone & WhatsApp'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* Social Links List */}
+          <section className="space-y-4">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <span>🔗</span> Social Media Platforms
+            </h2>
+
+            {loading ? (
+              <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+              <div className="space-y-3">
+                {links.map(link => (
+                  <div key={link._id} className={`bg-[#111] border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${link.isActive ? 'border-white/10' : 'border-white/5 opacity-50'}`}>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-400" dangerouslySetInnerHTML={{ __html: link.svgPath }} style={{ color: link.hoverColor }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white text-sm">{link.platform}</p>
+                        <p className="text-gray-500 text-xs truncate">{link.url}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                      <button onClick={() => toggleActive(link)} className={`text-xs px-2.5 py-1 rounded border transition-colors ${link.isActive ? 'border-green-500/30 text-green-400' : 'border-white/10 text-gray-600'}`}>
+                        {link.isActive ? 'Active' : 'Hidden'}
+                      </button>
+                      <button onClick={() => { setEditing({ ...link }); setIsNew(false); }} className="text-xs px-3 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors text-white">Edit</button>
+                      <button onClick={() => del(link._id!)} className="text-xs px-2.5 py-1 text-gray-500 hover:text-red-400 transition-colors">✕</button>
+                    </div>
+                  </div>
+                ))}
+                {links.length === 0 && <div className="text-center py-16 text-gray-600">No social links yet. Click &quot;Add Social Link&quot; to add one.</div>}
+              </div>
+            )}
+          </section>
         </div>
 
         {/* Edit Modal */}
         {editing && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) { setEditing(null); setIsNew(false); } }}>
-            <div className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#111] border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
               <h2 className="text-lg font-semibold">{isNew ? 'Add Social Link' : 'Edit Social Link'}</h2>
 
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">Quick Preset (optional)</label>
                 <div className="flex flex-wrap gap-2">
                   {Object.keys(PRESET_ICONS).map(p => (
-                    <button key={p} onClick={() => handlePreset(p)} className="px-2.5 py-1 rounded border border-white/10 text-xs hover:border-pink-500/50 transition-colors">{p}</button>
+                    <button key={p} onClick={() => handlePreset(p)} className="px-2.5 py-1 rounded border border-white/10 text-xs hover:border-pink-500/50 transition-colors text-gray-300">{p}</button>
                   ))}
                 </div>
               </div>
@@ -137,7 +235,7 @@ export default function AdminSocialPage() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">SVG Icon (HTML) *</label>
                 <textarea rows={4} value={editing.svgPath} onChange={e => setEditing(p => p ? { ...p, svgPath: e.target.value } : p)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-pink-500/50 transition-colors resize-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-pink-500/50 transition-colors resize-none text-xs"
                   placeholder="<svg xmlns=...>...</svg>" />
               </div>
               <div>
@@ -150,11 +248,11 @@ export default function AdminSocialPage() {
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">Display Order</label>
-                <input type="number" value={editing.order} onChange={e => setEditing(p => p ? { ...p, order: parseInt(e.target.value) } : p)}
+                <input type="number" value={editing.order} onChange={e => setEditing(p => p ? { ...p, order: parseInt(e.target.value) || 0 } : p)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => { setEditing(null); setIsNew(false); }} className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm hover:border-white/30 transition-colors">Cancel</button>
+                <button onClick={() => { setEditing(null); setIsNew(false); }} className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm hover:border-white/30 transition-colors text-white">Cancel</button>
                 <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 text-sm font-semibold disabled:opacity-50 text-white">
                   {saving ? 'Saving...' : 'Save Link'}
                 </button>

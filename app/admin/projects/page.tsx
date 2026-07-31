@@ -64,9 +64,9 @@ export default function AdminProjectsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-white">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#0a0a0a] text-white">
       <AdminSidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 min-w-0 overflow-x-hidden overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>

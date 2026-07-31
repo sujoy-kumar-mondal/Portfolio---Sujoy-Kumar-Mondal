@@ -20,9 +20,9 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   if (!project) return notFound();
 
   return (
-    <div className="flex bg-[#0a0a0a] min-h-screen text-white">
+    <div className="flex flex-col md:flex-row bg-[#0a0a0a] min-h-screen text-white">
       <AdminSidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 min-w-0 overflow-x-hidden overflow-y-auto">
         <ProjectForm
           projectId={id}
           initialData={{

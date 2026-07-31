@@ -33,9 +33,9 @@ export default async function DashboardPage() {
   const { projectCount, socialCount } = await getStats();
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#0a0a0a]">
       <AdminSidebar />
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 min-w-0 overflow-x-hidden">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-white">Welcome back! 👋</h1>
