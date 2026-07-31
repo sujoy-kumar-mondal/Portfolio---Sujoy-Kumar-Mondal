@@ -13,7 +13,7 @@ interface SocialLink {
   position: 'top' | 'right';
 }
 
-const PRESET_ICONS: Record<string, { svgPath: string; hoverColor: string; position: 'top' | 'right'}> = {
+const PRESET_ICONS: Record<string, { svgPath: string; hoverColor: string; position: 'top' | 'right' }> = {
   Phone: { position: 'top', hoverColor: '#00FFE1', svgPath: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24"><path fill="currentColor" d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/></svg>' },
   WhatsApp: { position: 'top', hoverColor: '#25D366', svgPath: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="24" height="24"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>' },
   LinkedIn: { position: 'right', hoverColor: '#0077B5', svgPath: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="24" height="24"><path fill="currentColor" d="M100.3 448H7.4V148.9h92.9zM53.8 108.1C24.1 108.1 0 83.5 0 53.8a53.8 53.8 0 0 1 107.6 0c0 29.7-24.1 54.3-53.8 54.3zM447.9 448h-92.7V302.4c0-34.7-.7-79.2-48.3-79.2-48.3 0-55.7 37.7-55.7 76.7V448h-92.8V148.9h89.1v40.8h1.3c12.4-23.5 42.7-48.3 87.9-48.3 94 0 111.3 61.9 111.3 142.3V448z"/></svg>' },
@@ -34,6 +34,9 @@ export default function AdminSocialPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'top' | 'right'>('top');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingPlatform, setDeletingPlatform] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/social').then(r => r.json()).then(socialData => {
@@ -72,9 +75,36 @@ export default function AdminSocialPage() {
   };
 
   const del = async (id: string) => {
-    if (!confirm('Delete this social link?')) return;
-    await fetch('/api/admin/social', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-    refresh();
+    if (!id) return;
+    try {
+      setIsDeleting(true);
+      // Optimistically remove from state
+      setLinks(prev => prev.filter(l => l._id !== id));
+      if (editing && editing._id === id) {
+        setEditing(null);
+        setIsNew(false);
+      }
+
+      const res = await fetch(`/api/admin/social?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'Failed to delete social link');
+        refresh();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error deleting social link');
+      refresh();
+    } finally {
+      setIsDeleting(false);
+      setDeletingId(null);
+      setDeletingPlatform('');
+    }
   };
 
   const toggleActive = async (link: SocialLink) => {
@@ -82,11 +112,69 @@ export default function AdminSocialPage() {
     refresh();
   };
 
-  const filteredLinks = links.filter(l => {
-    if (activeTab === 'top') return l.position === 'top';
-    if (activeTab === 'right') return l.position === 'right' || !l.position;
-    return true;
-  });
+  const moveUp = async (index: number) => {
+    if (index <= 0) return;
+    const items = [...filteredLinks];
+    const temp = items[index];
+    items[index] = items[index - 1];
+    items[index - 1] = temp;
+
+    const updatedCategoryItems = items.map((item, i) => ({ ...item, order: i }));
+
+    // Optimistically update local state immediately
+    setLinks(prev => {
+      const next = prev.map(l => {
+        const match = updatedCategoryItems.find(u => u._id === l._id);
+        return match ? { ...l, order: match.order } : l;
+      });
+      return next.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    });
+
+    const batch = updatedCategoryItems.map(item => ({ id: item._id, order: item.order }));
+
+    await fetch('/api/admin/social', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(batch),
+    });
+    refresh();
+  };
+
+  const moveDown = async (index: number) => {
+    if (index >= filteredLinks.length - 1) return;
+    const items = [...filteredLinks];
+    const temp = items[index];
+    items[index] = items[index + 1];
+    items[index + 1] = temp;
+
+    const updatedCategoryItems = items.map((item, i) => ({ ...item, order: i }));
+
+    // Optimistically update local state immediately
+    setLinks(prev => {
+      const next = prev.map(l => {
+        const match = updatedCategoryItems.find(u => u._id === l._id);
+        return match ? { ...l, order: match.order } : l;
+      });
+      return next.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    });
+
+    const batch = updatedCategoryItems.map(item => ({ id: item._id, order: item.order }));
+
+    await fetch('/api/admin/social', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(batch),
+    });
+    refresh();
+  };
+
+  const filteredLinks = links
+    .filter(l => {
+      if (activeTab === 'top') return l.position === 'top';
+      if (activeTab === 'right') return l.position === 'right' || !l.position;
+      return true;
+    })
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#0a0a0a]">
@@ -100,7 +188,7 @@ export default function AdminSocialPage() {
               <p className="text-gray-500 text-xs sm:text-sm">Manage links for Top Navbar and Right Side Floating Dock</p>
             </div>
             <button
-              onClick={() => { setEditing({ ...emptyLink }); setIsNew(true); }}
+              onClick={() => { setEditing({ ...emptyLink, position: activeTab }); setIsNew(true); }}
               className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold hover:scale-105 transition-transform text-white self-start sm:self-auto flex-shrink-0"
             >
               + Add Social Link
@@ -129,7 +217,7 @@ export default function AdminSocialPage() {
               <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" /></div>
             ) : (
               <div className="space-y-3">
-                {filteredLinks.map(link => {
+                {filteredLinks.map((link, idx) => {
                   const pos = link.position || 'right';
                   return (
                     <div key={link._id} className={`bg-[#111] border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${link.isActive ? 'border-white/10' : 'border-white/5 opacity-50'}`}>
@@ -138,12 +226,14 @@ export default function AdminSocialPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-white text-sm">{link.platform}</p>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-md border font-mono ${
-                              pos === 'top'
-                                ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
-                                : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
-                            }`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-md border font-mono ${pos === 'top'
+                              ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+                              : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                              }`}>
                               {pos === 'top' ? 'Top Navbar' : 'Right Side'}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-gray-300 font-mono">
+                              Order: {link.order ?? idx}
                             </span>
                           </div>
                           <p className="text-gray-500 text-xs truncate mt-0.5">{link.url}</p>
@@ -151,11 +241,44 @@ export default function AdminSocialPage() {
                       </div>
 
                       <div className="flex items-center justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                        {/* Reorder Buttons */}
+                        <div className="flex items-center gap-1 mr-2 bg-white/5 p-1 rounded-lg border border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => moveUp(idx)}
+                            disabled={idx === 0}
+                            className="px-2 py-0.5 text-xs rounded hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            title="Move Up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveDown(idx)}
+                            disabled={idx === filteredLinks.length - 1}
+                            className="px-2 py-0.5 text-xs rounded hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            title="Move Down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
                         <button onClick={() => toggleActive(link)} className={`text-xs px-2.5 py-1 rounded border transition-colors ${link.isActive ? 'border-green-500/30 text-green-400' : 'border-white/10 text-gray-600'}`}>
                           {link.isActive ? 'Active' : 'Hidden'}
                         </button>
                         <button onClick={() => { setEditing({ ...link, position: link.position || 'right' }); setIsNew(false); }} className="text-xs px-3 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors text-white">Edit</button>
-                        <button onClick={() => del(link._id!)} className="text-xs px-2.5 py-1 text-gray-500 hover:text-red-400 transition-colors">✕</button>
+                        <button
+                          onClick={() => {
+                            if (link._id) {
+                              setDeletingId(link._id);
+                              setDeletingPlatform(link.platform);
+                            }
+                          }}
+                          className="text-xs px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded transition-colors"
+                          title="Delete Social Link"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   );
@@ -166,11 +289,39 @@ export default function AdminSocialPage() {
           </section>
         </div>
 
+        {/* Delete Confirmation Modal */}
+        {deletingId && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#181818] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <h3 className="text-lg font-bold text-white">Delete Social Link?</h3>
+              <p className="text-gray-300 text-sm">
+                Are you sure you want to delete <span className="font-semibold text-pink-400">&quot;{deletingPlatform}&quot;</span>? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  onClick={() => { setDeletingId(null); setDeletingPlatform(''); }}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium transition-colors text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => del(deletingId)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Edit Modal */}
         {editing && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) { setEditing(null); setIsNew(false); } }}>
             <div className="bg-[#111] border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-lg font-semibold">{isNew ? 'Add Social Link' : 'Edit Social Link'}</h2>
+              <h2 className="text-lg font-semibold text-white">{isNew ? 'Add Social Link' : 'Edit Social Link'}</h2>
 
               <div>
                 <label className="text-xs text-gray-400 block mb-1.5">Quick Preset (optional)</label>
@@ -187,22 +338,20 @@ export default function AdminSocialPage() {
                   <button
                     type="button"
                     onClick={() => setEditing(p => p ? { ...p, position: 'top' } : p)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition-colors ${
-                      editing.position === 'top'
-                        ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                        : 'border-white/10 text-gray-400 hover:text-white'
-                    }`}
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition-colors ${editing.position === 'top'
+                      ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+                      : 'border-white/10 text-gray-400 hover:text-white'
+                      }`}
                   >
                     Top Navbar
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditing(p => p ? { ...p, position: 'right' } : p)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition-colors ${
-                      editing.position === 'right'
-                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
-                        : 'border-white/10 text-gray-400 hover:text-white'
-                    }`}
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition-colors ${editing.position === 'right'
+                      ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
+                      : 'border-white/10 text-gray-400 hover:text-white'
+                      }`}
                   >
                     Right Side Dock
                   </button>
@@ -241,9 +390,25 @@ export default function AdminSocialPage() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => { setEditing(null); setIsNew(false); }} className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm hover:border-white/30 transition-colors text-white">Cancel</button>
+                {!isNew && editing._id && (
+                  <button
+                    onClick={() => {
+                      const id = editing._id!;
+                      const platform = editing.platform;
+                      setEditing(null);
+                      setIsNew(false);
+                      setDeletingId(id);
+                      setDeletingPlatform(platform);
+                    }}
+                    disabled={saving}
+                    className="px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-sm font-medium transition-colors"
+                  >
+                    Delete Link
+                  </button>
+                )}
+                <button onClick={() => { setEditing(null); setIsNew(false); }} disabled={saving} className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm hover:border-white/30 transition-colors text-white disabled:opacity-50">Cancel</button>
                 <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 text-sm font-semibold disabled:opacity-50 text-white">
-                  {saving ? 'Saving...' : 'Save Link'}
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>
@@ -253,3 +418,4 @@ export default function AdminSocialPage() {
     </div>
   );
 }
+

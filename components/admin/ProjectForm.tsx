@@ -1,7 +1,7 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ImageUploader from '@/components/admin/ImageUploader';
+import ImageUploader, { uploadFileToCloudinary } from '@/components/admin/ImageUploader';
 import { IDescriptionPart } from '@/models/Project';
 
 interface ProjectFormData {
@@ -78,6 +78,13 @@ function DescriptionEditor({ label, parts, onChange }: DescriptionEditorProps) {
   );
 }
 
+interface GalleryItem {
+  id: string;
+  file?: File;
+  previewUrl: string;
+  existingCloudinaryUrl?: string;
+}
+
 interface ProjectFormProps {
   initialData?: Partial<ProjectFormData>;
   projectId?: string;
@@ -87,13 +94,39 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
   const router = useRouter();
   const [data, setData] = useState<ProjectFormData>({ ...defaultData, ...initialData });
   const [tagInput, setTagInput] = useState('');
+  const [tagError, setTagError] = useState('');
   const [featureInput, setFeatureInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Track session uploads for auto-cleanup on cancel
-  const sessionUploadedImagesRef = useRef<string[]>([]);
-  const isSavedRef = useRef(false);
+
+  // Main Image state
+  const [pendingMainFile, setPendingMainFile] = useState<File | null>(null);
+  const [mainPreview, setMainPreview] = useState(initialData?.mainImage || '');
+
+  // Gallery Images state
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() => {
+    return (initialData?.images || []).map((url, idx) => ({
+      id: `existing-${idx}-${url}`,
+      previewUrl: url,
+      existingCloudinaryUrl: url,
+    }));
+  });
+
+  // Assets marked for deletion on save
+  const [urlsToDelete, setUrlsToDelete] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (initialData) {
+      setData(d => ({ ...defaultData, ...initialData }));
+      setMainPreview(initialData.mainImage || '');
+      setGalleryItems((initialData.images || []).map((url, idx) => ({
+        id: `existing-${idx}-${url}`,
+        previewUrl: url,
+        existingCloudinaryUrl: url,
+      })));
+    }
+  }, [initialData]);
 
   const set = (key: keyof ProjectFormData) => (val: unknown) => setData(d => ({ ...d, [key]: val }));
 
@@ -103,10 +136,24 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
 
   const addTag = () => {
     const t = tagInput.trim();
-    if (t && !data.tags.includes(t) && data.tags.length < 12) {
-      setData(d => ({ ...d, tags: [...d.tags, t.startsWith('#') ? t : `#${t}`] }));
-      setTagInput('');
+    if (!t) return;
+
+    if (data.tags.length >= 12) {
+      setTagError('Maximum 12 tags allowed.');
+      return;
     }
+
+    const formatted = t.startsWith('#') ? t : `#${t}`;
+    const exists = data.tags.some(existing => existing.toLowerCase() === formatted.toLowerCase());
+
+    if (exists) {
+      setTagError(`Tag "${formatted}" already exists.`);
+      return;
+    }
+
+    setData(d => ({ ...d, tags: [...d.tags, formatted] }));
+    setTagInput('');
+    setTagError('');
   };
 
   const addFeature = () => {
@@ -114,86 +161,132 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
     if (f) { setData(d => ({ ...d, features: [...d.features, f] })); setFeatureInput(''); }
   };
 
-  const handleUploadMain = (url: string) => {
-    if (url) {
-      sessionUploadedImagesRef.current.push(url);
-      set('mainImage')(url);
-    }
+  const handleSelectMainImage = (file: File | null, previewUrl: string) => {
+    setPendingMainFile(file);
+    setMainPreview(previewUrl);
   };
 
-  const handleUploadMultipleExtra = (urls: string[]) => {
-    if (urls && urls.length > 0) {
-      sessionUploadedImagesRef.current.push(...urls);
-      setData(d => ({ ...d, images: [...d.images, ...urls] }));
-    }
+  const handleSelectMultipleExtra = (files: File[], previewUrls: string[]) => {
+    const newItems: GalleryItem[] = files.map((file, idx) => ({
+      id: `new-${Date.now()}-${idx}`,
+      file,
+      previewUrl: previewUrls[idx],
+    }));
+    setGalleryItems(prev => [...prev, ...newItems]);
   };
 
-  const handleCancel = async () => {
-    // Delete any session uploaded images that are not saved
-    const imagesToDelete = sessionUploadedImagesRef.current;
-    sessionUploadedImagesRef.current = [];
-    for (const url of imagesToDelete) {
-      try {
-        await fetch('/api/admin/delete-asset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        });
-      } catch (e) {
-        console.error('Failed to cleanup cancelled upload:', e);
-      }
+  const removeMainImage = () => {
+    if (mainPreview && mainPreview.includes('cloudinary')) {
+      setUrlsToDelete(prev => [...prev, mainPreview]);
     }
+    setPendingMainFile(null);
+    setMainPreview('');
+    setData(d => ({ ...d, mainImage: '' }));
+  };
+
+  const removeGalleryImage = (index: number) => {
+    const item = galleryItems[index];
+    if (item?.existingCloudinaryUrl) {
+      setUrlsToDelete(prev => [...prev, item.existingCloudinaryUrl!]);
+    }
+    setGalleryItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCancel = () => {
+    // Simply navigate back without deleting or uploading anything to Cloudinary
     router.back();
   };
 
   const save = async () => {
-    if (!data.name) { setError('Project name is required'); return; }
+    if (!data.name || !data.name.trim()) {
+      setError('Project Name is required.');
+      return;
+    }
+
+    const cleanedShortDesc = data.shortDescription
+      .map(p => ({ text: p.text.trim(), url: (p.url || '').trim() }))
+      .filter(p => p.text.length > 0);
+
+    if (cleanedShortDesc.length === 0) {
+      setError('Short Description text is required. Please fill in the text for description parts.');
+      return;
+    }
+
+    const cleanedDesc = data.description
+      .map(p => ({ text: p.text.trim(), url: (p.url || '').trim() }))
+      .filter(p => p.text.length > 0);
+
+    if (cleanedDesc.length === 0) {
+      setError('Full Description text is required. Please fill in the text for description parts.');
+      return;
+    }
+
     setSaving(true);
     setError('');
+
     try {
+      // 1. Upload main image if pending
+      let finalMainImage = data.mainImage;
+      if (pendingMainFile) {
+        finalMainImage = await uploadFileToCloudinary(pendingMainFile, 'projects', 'image');
+        if (initialData?.mainImage && initialData.mainImage !== finalMainImage) {
+          setUrlsToDelete(prev => [...prev, initialData.mainImage!]);
+        }
+      } else if (!mainPreview) {
+        finalMainImage = '';
+      }
+
+      // 2. Upload pending gallery images
+      const finalGalleryImages: string[] = [];
+      for (const item of galleryItems) {
+        if (item.file) {
+          const uploadedUrl = await uploadFileToCloudinary(item.file, 'projects', 'image');
+          finalGalleryImages.push(uploadedUrl);
+        } else if (item.existingCloudinaryUrl) {
+          finalGalleryImages.push(item.existingCloudinaryUrl);
+        } else if (item.previewUrl) {
+          finalGalleryImages.push(item.previewUrl);
+        }
+      }
+
+      // 3. Delete obsolete Cloudinary assets
+      for (const url of urlsToDelete) {
+        if (url && url.includes('cloudinary')) {
+          fetch('/api/admin/delete-asset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          }).catch(console.error);
+        }
+      }
+
+      const payload: ProjectFormData = {
+        ...data,
+        name: data.name.trim(),
+        shortDescription: cleanedShortDesc,
+        description: cleanedDesc,
+        mainImage: finalMainImage,
+        images: finalGalleryImages,
+      };
+
       const url = projectId ? `/api/admin/projects/${projectId}` : '/api/admin/projects';
       const method = projectId ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Save failed'); }
-      isSavedRef.current = true;
-      sessionUploadedImagesRef.current = []; // Clear so they are not deleted
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Save failed');
+      }
+
       router.push('/admin/projects');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const removeGalleryImage = async (index: number) => {
-    const imgUrl = data.images[index];
-    setData(d => ({ ...d, images: d.images.filter((_, fi) => fi !== index) }));
-    if (imgUrl) {
-      try {
-        await fetch('/api/admin/delete-asset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: imgUrl }),
-        });
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  };
-
-  const removeMainImage = async () => {
-    const imgUrl = data.mainImage;
-    setData(d => ({ ...d, mainImage: '' }));
-    if (imgUrl) {
-      try {
-        await fetch('/api/admin/delete-asset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: imgUrl }),
-        });
-      } catch (e) {
-        console.error(e);
-      }
     }
   };
 
@@ -205,9 +298,21 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
           <p className="text-gray-500 text-xs sm:text-sm">Fill in the project details below</p>
         </div>
         <div className="flex gap-2.5 sm:gap-3 flex-shrink-0">
-          <button type="button" onClick={handleCancel} className="px-3.5 py-2 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white">Cancel</button>
-          <button type="button" onClick={save} disabled={saving} className="px-4 sm:px-5 py-2 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white">
-            {saving ? 'Saving...' : projectId ? 'Update' : 'Create Project'}
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={saving}
+            className="px-3.5 py-2 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="px-4 sm:px-5 py-2 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -253,7 +358,7 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
           </div>
           <div>
             <label className="text-sm text-gray-300 block mb-1.5">Display Order</label>
-            <input type="number" value={data.order} onChange={e => set('order')(parseInt(e.target.value))}
+            <input type="number" value={data.order} onChange={e => set('order')(parseInt(e.target.value) || 0)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-colors" />
           </div>
         </div>
@@ -283,22 +388,34 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Tags</h2>
           <span className="text-xs text-gray-600">{data.tags.length}/12</span>
         </div>
-        <div className="flex gap-2">
-          <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
-            placeholder="javascript (# added automatically)" disabled={data.tags.length >= 12}
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors disabled:opacity-40" />
-          <button type="button" onClick={addTag} disabled={data.tags.length >= 12} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm transition-colors disabled:opacity-40">Add</button>
+        <div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={e => {
+                setTagInput(e.target.value);
+                if (tagError) setTagError('');
+              }}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
+              placeholder="javascript (# added automatically)"
+              disabled={data.tags.length >= 12}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors disabled:opacity-40"
+            />
+            <button type="button" onClick={addTag} disabled={data.tags.length >= 12} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm transition-colors disabled:opacity-40 text-white">Add</button>
+          </div>
+          {tagError && <p className="text-xs text-red-400 mt-1.5 font-medium">{tagError}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          {data.tags.map(tag => (
-            <span key={tag} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/20 text-xs text-gray-300">
+          {data.tags.map((tag, index) => (
+            <span key={`${tag}-${index}`} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/20 text-xs text-gray-300">
               {tag}
-              <button type="button" onClick={() => set('tags')(data.tags.filter(t => t !== tag))} className="text-gray-600 hover:text-red-400 transition-colors">✕</button>
+              <button type="button" onClick={() => { set('tags')(data.tags.filter((_, i) => i !== index)); if (tagError) setTagError(''); }} className="text-gray-600 hover:text-red-400 transition-colors">✕</button>
             </span>
           ))}
         </div>
       </section>
+
 
       {/* Features */}
       <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-4">
@@ -325,14 +442,19 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
       <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-6">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Images</h2>
         <div className="space-y-2">
-          <ImageUploader label="Main/Thumbnail Image" currentUrl={data.mainImage} folder="projects" onUpload={handleUploadMain} />
-          {data.mainImage && (
+          <ImageUploader
+            label="Main/Thumbnail Image"
+            currentUrl={mainPreview}
+            folder="projects"
+            onFileSelect={handleSelectMainImage}
+          />
+          {mainPreview && (
             <button
               type="button"
               onClick={removeMainImage}
               className="text-xs text-red-400 hover:underline font-medium"
             >
-              Remove Main Image (Deletes from Cloudinary)
+              Remove Main Image
             </button>
           )}
         </div>
@@ -340,20 +462,25 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
         <div>
           <label className="text-sm text-gray-300 block mb-3">Additional Gallery Images</label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-            {data.images.map((img, i) => (
-              <div key={i} className="relative group rounded-lg overflow-hidden border border-white/10">
+            {galleryItems.map((item, i) => (
+              <div key={item.id} className="relative group rounded-lg overflow-hidden border border-white/10">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img} alt="" className="w-full h-24 object-cover" />
+                <img src={item.previewUrl} alt="" className="w-full h-24 object-cover" />
                 <button
                   type="button"
                   onClick={() => removeGalleryImage(i)}
                   className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Remove image from project and Cloudinary"
+                  title="Remove image"
                 >✕</button>
               </div>
             ))}
           </div>
-          <ImageUploader label="Upload Additional Image(s)" folder="projects" multiple onUploadMultiple={handleUploadMultipleExtra} />
+          <ImageUploader
+            label="Upload Additional Image(s)"
+            folder="projects"
+            multiple
+            onFilesSelectMultiple={handleSelectMultipleExtra}
+          />
         </div>
       </section>
 

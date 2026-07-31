@@ -16,6 +16,8 @@ export async function uploadToCloudinary(
     const options: Record<string, unknown> = {
       folder: `portfolio/${folder}`,
       resource_type: resourceType,
+      access_mode: 'public',
+      type: 'upload',
     };
 
     if (fileName) {
@@ -47,16 +49,14 @@ export async function uploadToCloudinary(
 export async function deleteFromCloudinary(url: string): Promise<void> {
   if (!url || !url.includes('cloudinary')) return;
   try {
-    const parts = url.split('/');
+    const decodedUrl = decodeURIComponent(url);
+    const parts = decodedUrl.split('/');
     const uploadIndex = parts.findIndex(p => p === 'upload');
     if (uploadIndex === -1) return;
 
-    // Detect resource type directly from the Cloudinary URL structure
-    // Cloudinary URLs look like: .../image/upload/... or .../raw/upload/...
-    const typeFromUrl = parts[uploadIndex - 1]; 
-    const resourceType = ['image', 'raw', 'video'].includes(typeFromUrl) ? typeFromUrl : 'image';
+    const typeFromUrl = parts[uploadIndex - 1];
+    const primaryResourceType = ['image', 'raw', 'video'].includes(typeFromUrl) ? typeFromUrl : 'image';
 
-    // Get everything after /upload/ and remove the version tag (e.g., v12345678)
     const pathParts = parts.slice(uploadIndex + 1);
     if (pathParts[0] && /^v\d+$/.test(pathParts[0])) {
       pathParts.shift();
@@ -64,13 +64,22 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
 
     const fullPath = pathParts.join('/');
     const lastDotIndex = fullPath.lastIndexOf('.');
-    
-    // For raw files, public_id includes the extension. For images, it does not.
-    const publicId = (resourceType === 'raw') 
-      ? fullPath 
-      : (lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath);
+    const pathWithoutExt = lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath;
 
-    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    // Try candidates in order: exact match, without extension, opposite resource type
+    const candidates: Array<{ publicId: string; resourceType: string }> = [
+      { publicId: primaryResourceType === 'raw' ? fullPath : pathWithoutExt, resourceType: primaryResourceType },
+      { publicId: fullPath, resourceType: primaryResourceType },
+      { publicId: pathWithoutExt, resourceType: primaryResourceType === 'raw' ? 'image' : 'raw' },
+      { publicId: fullPath, resourceType: primaryResourceType === 'raw' ? 'image' : 'raw' },
+    ];
+
+    for (const { publicId, resourceType } of candidates) {
+      const res = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType, invalidate: true });
+      if (res && res.result === 'ok') {
+        break;
+      }
+    }
   } catch (error) {
     console.error('Failed to delete asset from Cloudinary:', error);
   }

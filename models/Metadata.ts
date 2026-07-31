@@ -16,6 +16,11 @@ export interface IMetadata extends Omit<Document, '_id'> {
     description: string;
     type: string;
   };
+  logos?: {
+    navbarLogo?: string;
+    bannerLogo?: string;
+  };
+  cursorUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -23,25 +28,35 @@ export interface IMetadata extends Omit<Document, '_id'> {
 const MetadataSchema = new Schema<IMetadata>(
   {
     _id: { type: String, default: 'site_metadata' },
-    title: { type: String, required: true },
-    description: { type: String, required: true },
+    title: { type: String, default: '' },
+    description: { type: String, default: '' },
     keywords: [{ type: String }],
     icons: {
-      icon: { type: String, required: true },
-      shortcut: { type: String, required: true },
-      apple: { type: String, required: true },
+      icon: { type: String, default: '' },
+      shortcut: { type: String, default: '' },
+      apple: { type: String, default: '' },
     },
     openGraph: {
-      title: { type: String, required: true },
-      description: { type: String, required: true },
+      title: { type: String, default: '' },
+      description: { type: String, default: '' },
       type: { type: String, default: 'website' },
     },
+    logos: {
+      navbarLogo: { type: String, default: '' },
+      bannerLogo: { type: String, default: '' },
+    },
+    cursorUrl: { type: String, default: '' },
   },
   { 
     timestamps: true,
     _id: false 
   }
 );
+
+// Clear cached model to ensure schema updates (e.g. logos) are recompiled properly in dev mode
+if (mongoose.models && mongoose.models.Metadata) {
+  delete mongoose.models.Metadata;
+}
 
 const MetadataModel: Model<IMetadata> =
   mongoose.models.Metadata || mongoose.model<IMetadata>('Metadata', MetadataSchema, 'metadata');

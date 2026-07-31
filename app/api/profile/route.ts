@@ -10,8 +10,8 @@ export async function GET() {
       profile = await Profile.create({});
     }
     const profileObj = { ...profile };
-    if (!profileObj.cvUrl || profileObj.cvUrl.includes('cloudinary')) {
-      profileObj.cvUrl = '/Sujoy_Kumar_Mondal_CV.pdf';
+    if (!profileObj.cvUrl) {
+      profileObj.cvUrl = '';
     }
     return NextResponse.json(profileObj);
   } catch (error) {

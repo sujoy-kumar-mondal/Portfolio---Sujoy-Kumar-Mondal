@@ -6,7 +6,6 @@ export interface IProfile extends Document {
   about: string;
   photoUrl: string;
   cvUrl: string;
-  cursorUrl: string;
   skills: string[];
 }
 
@@ -16,9 +15,13 @@ const ProfileSchema = new Schema<IProfile>({
   about: { type: String, default: '' },
   photoUrl: { type: String, default: '' },
   cvUrl: { type: String, default: '' },
-  cursorUrl: { type: String, default: '' },
   skills: { type: [String], default: [] },
 }, { timestamps: true });
+
+// Reset cached Mongoose model to ensure updated schema in dev mode
+if (mongoose.models && mongoose.models.Profile) {
+  delete mongoose.models.Profile;
+}
 
 const Profile: Model<IProfile> =
   mongoose.models.Profile || mongoose.model<IProfile>('Profile', ProfileSchema);

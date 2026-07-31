@@ -10,13 +10,13 @@ const nunito = Nunito({ subsets: ['latin'], variable: '--font-nunito' });
 
 // Fallback metadata in case the database is unreachable or empty
 const defaultMetadata: Metadata = {
-  title: 'Sujoy Kumar Mondal - Portfolio',
-  description: 'Full-stack developer and web designer from Purba Medinipur.',
-  keywords: ['portfolio', 'web developer', 'full stack', 'Sujoy Kumar Mondal'],
+  title: '',
+  description: '',
+  keywords: [],
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    icon: '',
+    shortcut: '',
+    apple: '',
   },
 };
 
@@ -31,17 +31,17 @@ export async function generateMetadata(): Promise<Metadata> {
     if (!meta) return defaultMetadata;
 
     return {
-      title: meta.title,
-      description: meta.description,
-      keywords: meta.keywords,
+      title: meta.title || '',
+      description: meta.description || '',
+      keywords: meta.keywords || [],
       icons: {
-        icon: meta.icons?.icon,
-        shortcut: meta.icons?.shortcut,
-        apple: meta.icons?.apple,
+        icon: meta.icons?.icon || '',
+        shortcut: meta.icons?.shortcut || meta.icons?.icon || '',
+        apple: meta.icons?.apple || meta.icons?.icon || '',
       },
       openGraph: {
-        title: meta.openGraph?.title || meta.title,
-        description: meta.openGraph?.description || meta.description,
+        title: meta.openGraph?.title || meta.title || '',
+        description: meta.openGraph?.description || meta.description || '',
         type: (meta.openGraph?.type as 'website') || 'website',
       },
     };

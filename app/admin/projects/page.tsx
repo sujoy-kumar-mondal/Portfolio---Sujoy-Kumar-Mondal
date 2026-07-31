@@ -12,6 +12,7 @@ interface ProjectItem {
   date?: string;
   mainImage?: string;
   accentColor?: string;
+  order?: number;
   isActive: boolean;
   tags?: string[];
 }
@@ -29,7 +30,9 @@ export default function AdminProjectsPage() {
       const res = await fetch('/api/admin/projects');
       if (res.ok) {
         const data = await res.json();
-        setProjects(data);
+        if (Array.isArray(data)) {
+          setProjects(data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+        }
       }
     } catch (e) {
       console.error('Failed to fetch projects', e);
@@ -41,6 +44,52 @@ export default function AdminProjectsPage() {
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  const moveUp = async (index: number) => {
+    if (index <= 0) return;
+    const items = [...projects];
+    const temp = items[index];
+    items[index] = items[index - 1];
+    items[index - 1] = temp;
+
+    const updated = items.map((item, idx) => ({ ...item, order: idx }));
+    setProjects(updated);
+
+    try {
+      const payload = updated.map((item, idx) => ({ id: item._id, order: idx }));
+      await fetch('/api/admin/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      console.error('Failed to save project order', e);
+      fetchProjects();
+    }
+  };
+
+  const moveDown = async (index: number) => {
+    if (index >= projects.length - 1) return;
+    const items = [...projects];
+    const temp = items[index];
+    items[index] = items[index + 1];
+    items[index + 1] = temp;
+
+    const updated = items.map((item, idx) => ({ ...item, order: idx }));
+    setProjects(updated);
+
+    try {
+      const payload = updated.map((item, idx) => ({ id: item._id, order: idx }));
+      await fetch('/api/admin/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      console.error('Failed to save project order', e);
+      fetchProjects();
+    }
+  };
 
   const handleDelete = async () => {
     if (!deletingId) return;
@@ -99,7 +148,7 @@ export default function AdminProjectsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {projects.map((p) => (
+              {projects.map((p, idx) => (
                 <div key={p._id} className={`bg-[#111] border rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${p.isActive ? 'border-white/10' : 'border-white/5 opacity-60'}`}>
                   <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                     {p.mainImage ? (
@@ -115,9 +164,14 @@ export default function AdminProjectsPage() {
                         <p className="font-semibold text-white text-sm sm:text-base truncate" style={{ color: p.accentColor || '#5292ff' }}>
                           {p.name}
                         </p>
-                        <span className={`sm:hidden text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0 ${p.isActive ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-white/10 text-gray-400 bg-white/5'}`}>
-                          {p.isActive ? 'Active' : 'Hidden'}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-gray-400">
+                            Order: {p.order ?? idx}
+                          </span>
+                          <span className={`sm:hidden text-[10px] px-2 py-0.5 rounded-full border ${p.isActive ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-white/10 text-gray-400 bg-white/5'}`}>
+                            {p.isActive ? 'Active' : 'Hidden'}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-gray-400 text-xs mt-0.5 truncate">
                         {p.category}{p.date ? ` • ${p.date}` : ''}
@@ -131,6 +185,28 @@ export default function AdminProjectsPage() {
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-2.5 sm:pt-0 border-t border-white/5 sm:border-0 flex-wrap sm:flex-nowrap">
+                    {/* Reorder Buttons */}
+                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => moveUp(idx)}
+                        disabled={idx === 0}
+                        className="px-2 py-0.5 text-xs rounded hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        title="Move Up"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveDown(idx)}
+                        disabled={idx === projects.length - 1}
+                        className="px-2 py-0.5 text-xs rounded hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        title="Move Down"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
                     <span className={`hidden sm:inline-block text-xs px-2.5 py-1 rounded-full border ${p.isActive ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-white/10 text-gray-500 bg-white/5'}`}>
                       {p.isActive ? 'Active' : 'Hidden'}
                     </span>

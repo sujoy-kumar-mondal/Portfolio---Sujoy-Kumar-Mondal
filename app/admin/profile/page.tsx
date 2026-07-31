@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import AdminSidebar from '@/components/admin/Sidebar';
-import ImageUploader from '@/components/admin/ImageUploader';
+import ImageUploader, { uploadFileToCloudinary } from '@/components/admin/ImageUploader';
 
 interface Profile {
   name: string;
@@ -9,41 +9,123 @@ interface Profile {
   about: string;
   photoUrl: string;
   cvUrl: string;
-  cursorUrl: string;
   skills: string[];
 }
 
 export default function AdminProfilePage() {
-  const [profile, setProfile] = useState<Profile>({ name: '', intro: '', about: '', photoUrl: '', cvUrl: '', cursorUrl: '', skills: [] });
+  const [profile, setProfile] = useState<Profile>({ name: '', intro: '', about: '', photoUrl: '', cvUrl: '', skills: [] });
+  const [initialProfile, setInitialProfile] = useState<Profile>({ name: '', intro: '', about: '', photoUrl: '', cvUrl: '', skills: [] });
+
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+
+  const [pendingCvFile, setPendingCvFile] = useState<File | null>(null);
+  const [cvPreview, setCvPreview] = useState('');
+
   const [skillInput, setSkillInput] = useState('');
+  const [skillError, setSkillError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/admin/profile').then(r => r.json()).then(data => {
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+        setInitialProfile(data);
+        setPhotoPreview(data.photoUrl || '');
+        setCvPreview(data.cvUrl || '');
+      }
       setLoading(false);
     });
   }, []);
 
   const addSkill = () => {
     const s = skillInput.trim();
-    if (s && !profile.skills.includes(s)) {
-      setProfile(p => ({ ...p, skills: [...p.skills, s.startsWith('#') ? s : `#${s}`] }));
-      setSkillInput('');
+    if (!s) return;
+
+    const formatted = s.startsWith('#') ? s : `#${s}`;
+    const exists = profile.skills.some(existing => existing.toLowerCase() === formatted.toLowerCase());
+
+    if (exists) {
+      setSkillError(`Skill / Tag "${formatted}" already exists.`);
+      return;
     }
+
+    setProfile(p => ({ ...p, skills: [...p.skills, formatted] }));
+    setSkillInput('');
+    setSkillError('');
   };
 
   const removeSkill = (skill: string) => {
     setProfile(p => ({ ...p, skills: p.skills.filter(s => s !== skill) }));
+    setSkillError('');
+  };
+
+
+  const handleCancel = () => {
+    setProfile(initialProfile);
+    setPhotoPreview(initialProfile.photoUrl || '');
+    setCvPreview(initialProfile.cvUrl || '');
+    setPendingPhotoFile(null);
+    setPendingCvFile(null);
   };
 
   const save = async () => {
     setSaving(true);
-    const res = await fetch('/api/admin/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(profile) });
-    setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    try {
+      let updatedPhotoUrl = profile.photoUrl;
+      let updatedCvUrl = profile.cvUrl;
+
+      // 1. Upload pending photo if selected
+      if (pendingPhotoFile) {
+        updatedPhotoUrl = await uploadFileToCloudinary(pendingPhotoFile, 'profile', 'image');
+        if (initialProfile.photoUrl && initialProfile.photoUrl !== updatedPhotoUrl) {
+          fetch('/api/admin/delete-asset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: initialProfile.photoUrl }),
+          }).catch(console.error);
+        }
+      }
+
+      // 2. Upload pending CV PDF if selected
+      if (pendingCvFile) {
+        updatedCvUrl = await uploadFileToCloudinary(pendingCvFile, 'cv', 'auto');
+        if (initialProfile.cvUrl && initialProfile.cvUrl !== updatedCvUrl) {
+          fetch('/api/admin/delete-asset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: initialProfile.cvUrl }),
+          }).catch(console.error);
+        }
+      }
+
+      const updatedProfile = {
+        ...profile,
+        photoUrl: updatedPhotoUrl,
+        cvUrl: updatedCvUrl,
+      };
+
+      const res = await fetch('/api/admin/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedProfile),
+      });
+
+      if (res.ok) {
+        setProfile(updatedProfile);
+        setInitialProfile(updatedProfile);
+        setPendingPhotoFile(null);
+        setPendingCvFile(null);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return (
@@ -64,13 +146,24 @@ export default function AdminProfilePage() {
               <h1 className="text-xl sm:text-2xl font-bold text-white">Profile</h1>
               <p className="text-gray-500 text-xs sm:text-sm">Update your personal information & bio</p>
             </div>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white flex-shrink-0"
-            >
-              {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
-            </button>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={saving}
+                className="px-4 py-2.5 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white"
+              >
+                {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
+              </button>
+            </div>
           </div>
 
           {/* Basic Info */}
@@ -98,28 +191,57 @@ export default function AdminProfilePage() {
           {/* Skills / Tags */}
           <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-4">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Skills / Tags</h2>
-            <div className="flex gap-2">
-              <input type="text" value={skillInput} onChange={e => setSkillInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                placeholder="python (# added automatically)"
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors" />
-              <button onClick={addSkill} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm transition-colors">Add</button>
+            <div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={skillInput}
+                  onChange={e => {
+                    setSkillInput(e.target.value);
+                    if (skillError) setSkillError('');
+                  }}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                  placeholder="python (# added automatically)"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+                />
+                <button type="button" onClick={addSkill} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm transition-colors text-white">Add</button>
+              </div>
+              {skillError && <p className="text-xs text-red-400 mt-1.5 font-medium">{skillError}</p>}
             </div>
             <div className="flex flex-wrap gap-2">
-              {profile.skills.map(skill => (
-                <span key={skill} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/20 text-xs text-gray-300">
+              {profile.skills.map((skill, index) => (
+                <span key={`${skill}-${index}`} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/20 text-xs text-gray-300">
                   {skill}
-                  <button onClick={() => removeSkill(skill)} className="text-gray-600 hover:text-red-400 transition-colors">✕</button>
+                  <button type="button" onClick={() => removeSkill(skill)} className="text-gray-600 hover:text-red-400 transition-colors">✕</button>
                 </span>
               ))}
             </div>
           </section>
 
+
           {/* Uploads (Profile Photo & CV) */}
           <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-6">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">File Uploads</h2>
-            <ImageUploader label="Profile Photo" currentUrl={profile.photoUrl} folder="profile" onUpload={url => setProfile(p => ({ ...p, photoUrl: url }))} />
-            <ImageUploader label="CV / Resume (PDF)" currentUrl={profile.cvUrl} folder="cv" resourceType="raw" onUpload={url => setProfile(p => ({ ...p, cvUrl: url }))} accept=".pdf" />
+            <ImageUploader
+              label="Profile Photo"
+              currentUrl={photoPreview}
+              folder="profile"
+              onFileSelect={(file, previewUrl) => {
+                setPendingPhotoFile(file);
+                setPhotoPreview(previewUrl);
+              }}
+            />
+            <ImageUploader
+              label="CV / Resume (PDF)"
+              currentUrl={cvPreview}
+              folder="cv"
+              resourceType="auto"
+              accept=".pdf"
+              onFileSelect={(file, previewUrl) => {
+                setPendingCvFile(file);
+                setCvPreview(previewUrl);
+              }}
+            />
           </section>
         </div>
       </main>

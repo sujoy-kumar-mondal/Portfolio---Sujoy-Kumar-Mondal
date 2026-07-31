@@ -20,22 +20,37 @@ export default function AdminContactPage() {
     address: '', addressMapUrl: '', mapEmbedUrl: '', phone: '', phoneUrl: '', email: '', emailUrl: '',
     contactFormRecipient: '', getInTouchTitle: "", letsMeetTitle: "",
   });
+  const [initialInfo, setInitialInfo] = useState<ContactInfo>({
+    address: '', addressMapUrl: '', mapEmbedUrl: '', phone: '', phoneUrl: '', email: '', emailUrl: '',
+    contactFormRecipient: '', getInTouchTitle: "", letsMeetTitle: "",
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/admin/contact').then(r => r.json()).then(data => {
-      if (data) setInfo(data);
+      if (data) {
+        setInfo(data);
+        setInitialInfo(data);
+      }
       setLoading(false);
     });
   }, []);
+
+  const handleCancel = () => {
+    setInfo(initialInfo);
+  };
 
   const save = async () => {
     setSaving(true);
     const res = await fetch('/api/admin/contact', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(info) });
     setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    if (res.ok) {
+      setInitialInfo(info);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   };
 
   const set = (key: keyof ContactInfo) => (val: string) => setInfo(i => ({ ...i, [key]: val }));
@@ -58,9 +73,24 @@ export default function AdminContactPage() {
               <h1 className="text-xl sm:text-2xl font-bold text-white">Contact Info</h1>
               <p className="text-gray-500 text-xs sm:text-sm">Update Get in Touch & Let&apos;s Meet sections</p>
             </div>
-            <button onClick={save} disabled={saving} className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white self-start sm:self-auto flex-shrink-0">
-              {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
-            </button>
+            <div className="flex items-center gap-3 self-start sm:self-auto flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={saving}
+                className="px-4 py-2.5 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white"
+              >
+                {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
+              </button>
+            </div>
           </div>
 
           {/* Get in Touch */}

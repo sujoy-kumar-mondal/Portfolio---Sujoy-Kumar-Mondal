@@ -2,41 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import connectDB from '@/lib/mongodb';
 import SocialLink from '@/models/SocialLink';
-import { deleteFromCloudinary } from '@/lib/cloudinary';
 
-const DEFAULT_PHONE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24"><path fill="currentColor" d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/></svg>';
-const DEFAULT_WA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="24" height="24"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>';
+async function renormalizePosition(position: 'top' | 'right' | string, updatedId?: string, targetOrder?: number) {
+  const targetPos = (position === 'top' ? 'top' : 'right') as 'top' | 'right';
+  let items = await SocialLink.find({ position: targetPos }).sort({ order: 1, createdAt: 1 }).lean();
 
-async function ensurePhoneAndWhatsApp() {
-  const [hasPhone, hasWA] = await Promise.all([
-    SocialLink.findOne({ platform: { $regex: /phone|call/i } }),
-    SocialLink.findOne({ platform: { $regex: /whatsapp/i } }),
-  ]);
+  if (updatedId && typeof targetOrder === 'number') {
+    const targetItem = items.find(i => i._id.toString() === updatedId.toString());
+    const otherItems = items.filter(i => i._id.toString() !== updatedId.toString());
 
-  const count = await SocialLink.countDocuments();
-
-  if (!hasPhone) {
-    await SocialLink.create({
-      platform: 'Phone',
-      url: 'tel:+919002842851',
-      hoverColor: '#00FFE1',
-      svgPath: DEFAULT_PHONE_SVG,
-      order: count,
-      isActive: true,
-      position: 'top',
-    });
+    if (targetItem) {
+      const clampedOrder = Math.max(0, Math.min(targetOrder, otherItems.length));
+      otherItems.splice(clampedOrder, 0, targetItem);
+      items = otherItems;
+    }
   }
 
-  if (!hasWA) {
-    await SocialLink.create({
-      platform: 'WhatsApp',
-      url: 'https://wa.me/9002842851',
-      hoverColor: '#25D366',
-      svgPath: DEFAULT_WA_SVG,
-      order: count + 1,
-      isActive: true,
-      position: 'top',
-    });
+  for (let i = 0; i < items.length; i++) {
+    await SocialLink.findByIdAndUpdate(items[i]._id, { order: i });
   }
 }
 
@@ -44,8 +27,12 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   await connectDB();
-  await ensurePhoneAndWhatsApp();
-  const links = await SocialLink.find().sort({ order: 1 }).lean();
+
+  // Ensure top and right categories have clean, non-duplicate 0-indexed orders
+  await renormalizePosition('top');
+  await renormalizePosition('right');
+
+  const links = await SocialLink.find().sort({ position: 1, order: 1, createdAt: 1 }).lean();
   return NextResponse.json(links);
 }
 
@@ -55,8 +42,12 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const data = await req.json();
-    const count = await SocialLink.countDocuments();
-    const link = await SocialLink.create({ ...data, position: data.position || 'right', order: count });
+    const pos = data.position || 'right';
+    const count = await SocialLink.countDocuments({ position: pos });
+    const targetOrder = typeof data.order === 'number' ? data.order : count;
+
+    const link = await SocialLink.create({ ...data, position: pos, order: targetOrder });
+    await renormalizePosition(pos, link._id.toString(), targetOrder);
     return NextResponse.json(link, { status: 201 });
   } catch (error) {
     console.error(error);
@@ -69,8 +60,30 @@ export async function PUT(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     await connectDB();
-    const { id, ...data } = await req.json();
+    const body = await req.json();
+
+    // Support batch reordering
+    if (Array.isArray(body)) {
+      for (const item of body) {
+        if (item.id && typeof item.order === 'number') {
+          await SocialLink.findByIdAndUpdate(item.id, { order: item.order });
+        }
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    const { id, ...data } = body;
+    const existing = await SocialLink.findById(id);
     const link = await SocialLink.findByIdAndUpdate(id, data, { new: true });
+
+    if (link) {
+      const pos = link.position || 'right';
+      await renormalizePosition(pos, link._id.toString(), data.order);
+      if (existing && existing.position !== pos) {
+        await renormalizePosition(existing.position);
+      }
+    }
+
     return NextResponse.json(link);
   } catch (error) {
     console.error(error);
@@ -83,19 +96,35 @@ export async function DELETE(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     await connectDB();
-    const { id } = await req.json();
+
+    let id: string | null = null;
+    try {
+      const body = await req.json();
+      id = body?.id || body?._id || null;
+    } catch {
+      // Body may be empty or invalid JSON
+    }
+
+    if (!id) {
+      id = req.nextUrl.searchParams.get('id') || req.nextUrl.searchParams.get('_id');
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Social link ID is required' }, { status: 400 });
+    }
 
     const link = await SocialLink.findById(id);
     if (link) {
-      if ((link as unknown as { iconUrl?: string }).iconUrl) {
-        await deleteFromCloudinary((link as unknown as { iconUrl: string }).iconUrl);
-      }
+      const pos = link.position || 'right';
       await SocialLink.findByIdAndDelete(id);
+      await renormalizePosition(pos);
+      return NextResponse.json({ success: true, deletedId: id });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ error: 'Social link not found' }, { status: 404 });
   } catch (error) {
-    console.error(error);
+    console.error('Error deleting social link:', error);
     return NextResponse.json({ error: 'Failed to delete social link' }, { status: 500 });
   }
 }
+

@@ -27,9 +27,6 @@ export async function PUT(req: NextRequest) {
       if (existing.cvUrl && existing.cvUrl !== data.cvUrl) {
         await deleteFromCloudinary(existing.cvUrl);
       }
-      if (existing.cursorUrl && existing.cursorUrl !== data.cursorUrl) {
-        await deleteFromCloudinary(existing.cursorUrl);
-      }
     }
 
     const profile = await Profile.findOneAndUpdate({}, data, { new: true, upsert: true });

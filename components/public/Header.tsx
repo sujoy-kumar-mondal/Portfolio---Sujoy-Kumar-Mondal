@@ -15,9 +15,10 @@ export interface HeaderSocialLink {
 
 interface HeaderProps {
   links?: HeaderSocialLink[];
+  logoUrl?: string;
 }
 
-export default function Header({ links }: HeaderProps) {
+export default function Header({ links, logoUrl }: HeaderProps) {
   const router = useRouter();
   const [darkMode, setDarkMode] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -80,12 +81,17 @@ export default function Header({ links }: HeaderProps) {
   return (
     <header className="h-20 bg-white/10 backdrop-blur-sm z-50 rounded pointer-events-none flex items-center justify-between w-full px-4 max-w-screen-2xl mx-auto sticky top-0 transition-colors">
       <Link className="pointer-events-auto" href="/" onClick={handleLogoClick}>
-        <svg width="25" viewBox="0 0 224 473" fill="currentColor" stroke="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M75 429L1 472V322L75 281V429Z" fill="white" />
-          <path d="M152 322V386L223 344V281L75 196V126L152 171V238.715L223 196V126L1 1V236L152 322Z" fill="white" />
-          <path d="M75 429L1 472V322L75 281V429Z" stroke="white" />
-          <path d="M152 322V386L223 344V281L75 196V126L152 171V238.715L223 196V126L1 1V236L152 322Z" stroke="white" />
-        </svg>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="Website Logo" className="h-9 w-auto max-w-[160px] object-contain hover:scale-105 transition-transform" />
+        ) : (
+          <svg width="25" viewBox="0 0 224 473" fill="currentColor" stroke="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M75 429L1 472V322L75 281V429Z" fill="white" />
+            <path d="M152 322V386L223 344V281L75 196V126L152 171V238.715L223 196V126L1 1V236L152 322Z" fill="white" />
+            <path d="M75 429L1 472V322L75 281V429Z" stroke="white" />
+            <path d="M152 322V386L223 344V281L75 196V126L152 171V238.715L223 196V126L1 1V236L152 322Z" stroke="white" />
+          </svg>
+        )}
       </Link>
       <div className="flex gap-6 sm:gap-8 items-center">
         {/* Dynamic Top Social Links (Navbar) */}

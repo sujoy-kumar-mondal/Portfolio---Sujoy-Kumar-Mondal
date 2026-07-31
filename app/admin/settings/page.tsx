@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import AdminSidebar from '@/components/admin/Sidebar';
-import ImageUploader from '@/components/admin/ImageUploader';
+import ImageUploader, { uploadFileToCloudinary } from '@/components/admin/ImageUploader';
 
 interface ProfileData {
   name: string;
@@ -9,16 +9,60 @@ interface ProfileData {
   about: string;
   photoUrl: string;
   cvUrl: string;
-  cursorUrl: string;
   skills: string[];
+}
+
+interface MetadataData {
+  title: string;
+  description: string;
+  keywords: string[];
+  icons: {
+    icon: string;
+    shortcut: string;
+    apple: string;
+  };
+  openGraph: {
+    title: string;
+    description: string;
+    type: string;
+  };
+  logos?: {
+    navbarLogo?: string;
+    bannerLogo?: string;
+  };
+  cursorUrl?: string;
 }
 
 export default function AdminSettingsPage() {
   const [cursorUrl, setCursorUrl] = useState('');
+  const [initialCursorUrl, setInitialCursorUrl] = useState('');
+  const [pendingCursorFile, setPendingCursorFile] = useState<File | null>(null);
   const [fullProfile, setFullProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingCursor, setSavingCursor] = useState(false);
   const [cursorSaved, setCursorSaved] = useState(false);
+
+  // Metadata & Logos state
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
+  const [keywordsStr, setKeywordsStr] = useState('');
+
+  const [faviconUrl, setFaviconUrl] = useState('');
+  const [pendingFaviconFile, setPendingFaviconFile] = useState<File | null>(null);
+
+  const [ogTitle, setOgTitle] = useState('');
+  const [ogDescription, setOgDescription] = useState('');
+  const [ogType, setOgType] = useState('website');
+
+  const [navbarLogoUrl, setNavbarLogoUrl] = useState('');
+  const [bannerLogoUrl, setBannerLogoUrl] = useState('');
+  const [pendingNavbarLogoFile, setPendingNavbarLogoFile] = useState<File | null>(null);
+  const [pendingBannerLogoFile, setPendingBannerLogoFile] = useState<File | null>(null);
+
+  const [initialMetadata, setInitialMetadata] = useState<MetadataData | null>(null);
+  const [savingMeta, setSavingMeta] = useState(false);
+  const [metaSaved, setMetaSaved] = useState(false);
+  const [metaMsg, setMetaMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Admin Email state & OTP flow
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -42,30 +86,161 @@ export default function AdminSettingsPage() {
   const [otpNewPassword, setOtpNewPassword] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/profile').then(r => r.json()).then(data => {
-      if (data) {
-        setFullProfile(data);
-        setCursorUrl(data.cursorUrl || '');
+    Promise.all([
+      fetch('/api/admin/profile').then(r => r.json()),
+      fetch('/api/admin/metadata').then(r => r.json()),
+    ]).then(([profileData, metaData]) => {
+      if (profileData) {
+        setFullProfile(profileData);
       }
+      if (metaData && !metaData.error) {
+        populateMetadataState(metaData);
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load settings data:', err);
       setLoading(false);
     });
   }, []);
 
-  const handleSaveCursor = async (url: string) => {
-    setCursorUrl(url);
-    if (!fullProfile) return;
+  const populateMetadataState = (meta: MetadataData) => {
+    setInitialMetadata(meta);
+    setMetaTitle(meta.title || '');
+    setMetaDescription(meta.description || '');
+    setKeywordsStr(Array.isArray(meta.keywords) ? meta.keywords.join(', ') : '');
+
+    const currentFavicon = meta.icons?.icon || meta.icons?.shortcut || meta.icons?.apple || '';
+    setFaviconUrl(currentFavicon);
+
+    setOgTitle(meta.openGraph?.title || meta.title || '');
+    setOgDescription(meta.openGraph?.description || meta.description || '');
+    setOgType(meta.openGraph?.type || 'website');
+
+    setNavbarLogoUrl(meta.logos?.navbarLogo || '');
+    setBannerLogoUrl(meta.logos?.bannerLogo || '');
+
+    setCursorUrl(meta.cursorUrl || '');
+    setInitialCursorUrl(meta.cursorUrl || '');
+
+    setPendingFaviconFile(null);
+    setPendingNavbarLogoFile(null);
+    setPendingBannerLogoFile(null);
+    setPendingCursorFile(null);
+  };
+
+  const handleCancelMetadata = () => {
+    if (initialMetadata) {
+      populateMetadataState(initialMetadata);
+      setMetaMsg(null);
+    }
+  };
+
+  const handleSaveMetadata = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingMeta(true);
+    setMetaMsg(null);
+
+    try {
+      let finalFavicon = faviconUrl;
+      let finalNavbarLogo = navbarLogoUrl;
+      let finalBannerLogo = bannerLogoUrl;
+
+      // Upload pending files to Cloudinary storage
+      if (pendingFaviconFile) {
+        finalFavicon = await uploadFileToCloudinary(pendingFaviconFile, 'favicons', 'image');
+      }
+
+      if (pendingNavbarLogoFile) {
+        finalNavbarLogo = await uploadFileToCloudinary(pendingNavbarLogoFile, 'logos', 'image');
+      }
+      if (pendingBannerLogoFile) {
+        finalBannerLogo = await uploadFileToCloudinary(pendingBannerLogoFile, 'logos', 'image');
+      }
+
+      const keywordsArray = keywordsStr
+        .split(',')
+        .map(k => k.trim())
+        .filter(Boolean);
+
+      const payload = {
+        title: metaTitle,
+        description: metaDescription,
+        keywords: keywordsArray,
+        icons: {
+          icon: finalFavicon,
+          shortcut: finalFavicon,
+          apple: finalFavicon,
+        },
+        openGraph: {
+          title: ogTitle || metaTitle,
+          description: ogDescription || metaDescription,
+          type: ogType || 'website',
+        },
+        logos: {
+          navbarLogo: finalNavbarLogo,
+          bannerLogo: finalBannerLogo,
+        },
+        cursorUrl,
+      };
+
+      const res = await fetch('/api/admin/metadata', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error || 'Failed to save metadata');
+
+      populateMetadataState(updated);
+      setMetaSaved(true);
+      setMetaMsg({ type: 'success', text: 'Website metadata & branding logos updated successfully!' });
+      setTimeout(() => setMetaSaved(false), 4000);
+    } catch (err: unknown) {
+      console.error('Save metadata error:', err);
+      setMetaMsg({ type: 'error', text: err instanceof Error ? err.message : 'Error saving metadata' });
+    } finally {
+      setSavingMeta(false);
+    }
+  };
+
+  const handleCancelCursor = () => {
+    setCursorUrl(initialCursorUrl);
+    setPendingCursorFile(null);
+  };
+
+  const handleSaveCursor = async () => {
     setSavingCursor(true);
-    const updated = { ...fullProfile, cursorUrl: url };
-    const res = await fetch('/api/admin/profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated),
-    });
-    setSavingCursor(false);
-    if (res.ok) {
-      setFullProfile(updated);
-      setCursorSaved(true);
-      setTimeout(() => setCursorSaved(false), 3000);
+    try {
+      let finalCursorUrl = cursorUrl;
+      if (pendingCursorFile) {
+        finalCursorUrl = await uploadFileToCloudinary(pendingCursorFile, 'cursor', 'image');
+      }
+
+      const currentMetaRes = await fetch('/api/admin/metadata');
+      const currentMeta = await currentMetaRes.json();
+
+      const updatedPayload = {
+        ...currentMeta,
+        cursorUrl: finalCursorUrl,
+      };
+
+      const res = await fetch('/api/admin/metadata', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPayload),
+      });
+
+      const data = await res.json();
+      if (res.ok && !data.error) {
+        populateMetadataState(data);
+        setCursorSaved(true);
+        setTimeout(() => setCursorSaved(false), 3000);
+      }
+    } catch (e) {
+      console.error('Failed to save custom cursor:', e);
+    } finally {
+      setSavingCursor(false);
     }
   };
 
@@ -204,14 +379,160 @@ export default function AdminSettingsPage() {
           <div className="sticky top-0 z-30 bg-[#0a0a0a] py-4 border-b border-white/10 flex items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white">Settings</h1>
-              <p className="text-gray-500 text-xs sm:text-sm">Manage admin email, security, and site cursor icon</p>
+              <p className="text-gray-500 text-xs sm:text-sm">Manage website metadata, logos, email, security, and cursor</p>
             </div>
-            {cursorSaved && (
+            {metaSaved && (
               <span className="text-xs text-emerald-400 font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                ✓ Cursor Icon Saved!
+                ✓ Metadata Saved!
               </span>
             )}
           </div>
+
+          {/* Website Metadata & SEO Section */}
+          <form onSubmit={handleSaveMetadata} className="space-y-6">
+            <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-5">
+              <div className="border-b border-white/10 pb-3">
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Website Metadata & SEO</h2>
+                <p className="text-xs text-gray-500 mt-1">Configure global search engine metadata, descriptions, keywords, and favicons.</p>
+              </div>
+
+              {metaMsg && (
+                <div className={`p-3 rounded-xl text-sm border ${metaMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                  {metaMsg.text}
+                </div>
+              )}
+
+              {/* General SEO Inputs */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1.5 font-medium">Website Title</label>
+                  <input
+                    type="text"
+                    value={metaTitle}
+                    onChange={e => setMetaTitle(e.target.value)}
+                    required
+                    placeholder="Website Title - Portfolio"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1.5 font-medium">Meta Description</label>
+                  <textarea
+                    value={metaDescription}
+                    onChange={e => setMetaDescription(e.target.value)}
+                    required
+                    rows={3}
+                    placeholder="Enter website meta description..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1.5 font-medium">Keywords (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={keywordsStr}
+                    onChange={e => setKeywordsStr(e.target.value)}
+                    placeholder="portfolio, web developer, full stack"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Favicon & Site Icons */}
+              <div className="border-t border-white/10 pt-5 space-y-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Website Favicon / Icon</h3>
+                <p className="text-xs text-gray-500">Upload a single PNG, SVG, or ICO file. It automatically reflects as the primary favicon, shortcut icon, and Apple touch icon.</p>
+                
+                <ImageUploader
+                  label="Website Favicon / Icon (PNG/SVG/ICO)"
+                  currentUrl={faviconUrl}
+                  folder="favicons"
+                  onFileSelect={(file, preview) => {
+                    setPendingFaviconFile(file);
+                    setFaviconUrl(preview);
+                  }}
+                  accept="image/*,.ico,.svg"
+                />
+              </div>
+
+              {/* OpenGraph Metadata */}
+              <div className="border-t border-white/10 pt-5 space-y-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">OpenGraph (Social Cards)</h3>
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1.5">OpenGraph Title</label>
+                  <input
+                    type="text"
+                    value={ogTitle}
+                    onChange={e => setOgTitle(e.target.value)}
+                    placeholder="Same as Website Title if left blank"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1.5">OpenGraph Description</label>
+                  <textarea
+                    value={ogDescription}
+                    onChange={e => setOgDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Same as Meta Description if left blank"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors resize-none"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Website Logos & Branding Section */}
+            <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-5">
+              <div className="border-b border-white/10 pb-3">
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Website Logos & Branding</h2>
+                <p className="text-xs text-gray-500 mt-1">Upload custom PNG or SVG logos for your website navigation header and hero banner.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ImageUploader
+                  label="Navbar Top-Left Logo (PNG/SVG)"
+                  currentUrl={navbarLogoUrl}
+                  folder="logos"
+                  onFileSelect={(file, preview) => {
+                    setPendingNavbarLogoFile(file);
+                    setNavbarLogoUrl(preview);
+                  }}
+                  accept="image/*,.svg"
+                />
+
+                <ImageUploader
+                  label="Main Hero Banner Logo (PNG/SVG)"
+                  currentUrl={bannerLogoUrl}
+                  folder="logos"
+                  onFileSelect={(file, preview) => {
+                    setPendingBannerLogoFile(file);
+                    setBannerLogoUrl(preview);
+                  }}
+                  accept="image/*,.svg"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={handleCancelMetadata}
+                  disabled={savingMeta}
+                  className="px-4 py-2.5 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMeta}
+                  className="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white shadow-lg"
+                >
+                  {savingMeta ? 'Saving Metadata...' : metaSaved ? '✓ Saved!' : 'Save Metadata & Logos'}
+                </button>
+              </div>
+            </section>
+          </form>
 
           {/* Admin Email Section (Requires OTP Verification) */}
           <section className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-4">
@@ -360,7 +681,7 @@ export default function AdminSettingsPage() {
                     Forgot your current password? Request a 6-digit OTP to your admin email address to set a new password.
                   </p>
                   <div>
-                    <label className="text-sm text-gray-300 block mb-1.5">Admin Email</label>
+                    <label className="text-sm text-gray-300 block mb-1.5 font-medium">Admin Email</label>
                     <input
                       type="email"
                       value={otpEmail || newAdminEmail}
@@ -384,7 +705,7 @@ export default function AdminSettingsPage() {
                     Enter the 6-digit OTP sent to <strong className="text-white">{otpEmail}</strong> and your new password.
                   </p>
                   <div>
-                    <label className="text-sm text-gray-300 block mb-1.5">6-Digit OTP</label>
+                    <label className="text-sm text-gray-300 block mb-1.5 font-medium">6-Digit OTP</label>
                     <input
                       type="text"
                       value={otpCode}
@@ -396,7 +717,7 @@ export default function AdminSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-300 block mb-1.5">New Password</label>
+                    <label className="text-sm text-gray-300 block mb-1.5 font-medium">New Password</label>
                     <input
                       type="password"
                       value={otpNewPassword}
@@ -434,10 +755,30 @@ export default function AdminSettingsPage() {
               label="Custom Cursor Icon (PNG/SVG, 32×32)"
               currentUrl={cursorUrl}
               folder="cursor"
-              onUpload={handleSaveCursor}
+              onFileSelect={(file, previewUrl) => {
+                setPendingCursorFile(file);
+                setCursorUrl(previewUrl);
+              }}
               accept="image/*"
             />
-            {savingCursor && <p className="text-xs text-pink-400">Saving custom cursor icon...</p>}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleCancelCursor}
+                disabled={savingCursor}
+                className="px-4 py-2.5 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCursor}
+                disabled={savingCursor || (!pendingCursorFile && cursorUrl === initialCursorUrl)}
+                className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white"
+              >
+                {savingCursor ? 'Saving...' : cursorSaved ? '✓ Saved!' : 'Save Changes'}
+              </button>
+            </div>
           </section>
         </div>
       </main>

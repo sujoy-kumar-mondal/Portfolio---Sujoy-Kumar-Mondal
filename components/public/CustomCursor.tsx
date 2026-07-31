@@ -13,7 +13,7 @@ export default function CustomCursor({ cursorUrl: initialUrl }: CustomCursorProp
       setCursorUrl(initialUrl);
       return;
     }
-    fetch('/api/profile')
+    fetch('/api/metadata')
       .then((r) => r.json())
       .then((data) => {
         if (data?.cursorUrl) setCursorUrl(data.cursorUrl);

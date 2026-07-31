@@ -1,11 +1,29 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 
+export async function uploadFileToCloudinary(
+  file: File,
+  folder: string,
+  resourceType: 'image' | 'raw' | 'auto' = 'auto'
+): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', folder);
+  formData.append('resourceType', resourceType);
+
+  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
+  return data.url;
+}
+
 interface ImageUploaderProps {
   label?: string;
   currentUrl?: string;
   folder: string;
   resourceType?: 'image' | 'raw' | 'auto';
+  onFileSelect?: (file: File | null, previewUrl: string) => void;
+  onFilesSelectMultiple?: (files: File[], previewUrls: string[]) => void;
   onUpload?: (url: string) => void;
   onUploadMultiple?: (urls: string[]) => void;
   accept?: string;
@@ -17,6 +35,8 @@ export default function ImageUploader({
   currentUrl,
   folder,
   resourceType = 'image',
+  onFileSelect,
+  onFilesSelectMultiple,
   onUpload,
   onUploadMultiple,
   accept = 'image/*',
@@ -24,60 +44,52 @@ export default function ImageUploader({
 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(currentUrl || '');
+  const [selectedFileName, setSelectedFileName] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setPreview(currentUrl || '');
-  }, [currentUrl]);
-
-  // Function to delete file from Cloudinary via API
-  const deleteFile = async (urlToDelete: string) => {
-    if (!urlToDelete || !urlToDelete.includes('cloudinary')) return;
-    try {
-      await fetch('/api/upload/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlToDelete }),
-      });
-    } catch (err) {
-      console.error('Failed to delete file from Cloudinary:', err);
+    if (!currentUrl) {
+      setSelectedFileName('');
     }
-  };
+  }, [currentUrl]);
 
   const handleFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
-    setUploading(true);
     setError('');
 
-    // Capture existing file URL before starting new upload
-    const fileToDelete = preview || currentUrl;
-
     const fileArray = Array.from(files);
+
+    // If deferred callbacks are provided (or by default in new workflow), handle locally without API call
+    if (onFileSelect || onFilesSelectMultiple || (!onUpload && !onUploadMultiple)) {
+      if (multiple) {
+        const previewUrls = fileArray.map((f) => URL.createObjectURL(f));
+        onFilesSelectMultiple?.(fileArray, previewUrls);
+      } else {
+        const singleFile = fileArray[0];
+        const previewUrl = URL.createObjectURL(singleFile);
+        setPreview(previewUrl);
+        setSelectedFileName(singleFile.name);
+        onFileSelect?.(singleFile, previewUrl);
+        if (onUpload) onUpload(previewUrl);
+      }
+      return;
+    }
+
+    // Fallback immediate upload mode (if only legacy onUpload is provided without onFileSelect)
+    setUploading(true);
     const uploadedUrls: string[] = [];
 
     try {
       for (const file of fileArray) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('folder', folder);
-        formData.append('resourceType', resourceType);
-
-        // 1. Upload new file
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Upload failed');
-
-        uploadedUrls.push(data.url);
+        const url = await uploadFileToCloudinary(file, folder, resourceType);
+        uploadedUrls.push(url);
 
         if (!multiple && onUpload) {
-          setPreview(data.url);
-          onUpload(data.url);
-
-          // 2. Delete existing file right after successful upload
-          if (fileToDelete && fileToDelete !== data.url) {
-            await deleteFile(fileToDelete);
-          }
+          setPreview(url);
+          setSelectedFileName(file.name);
+          onUpload(url);
         }
       }
 
@@ -98,6 +110,18 @@ export default function ImageUploader({
     }
   };
 
+  const getDisplayName = () => {
+    if (selectedFileName) return selectedFileName;
+    if (!preview) return '';
+    try {
+      const parts = preview.split('/');
+      const last = parts[parts.length - 1];
+      return decodeURIComponent(last);
+    } catch {
+      return preview;
+    }
+  };
+
   return (
     <div className="space-y-2">
       {label && <label className="text-sm font-medium text-gray-300">{label}</label>}
@@ -114,13 +138,13 @@ export default function ImageUploader({
           </div>
         ) : preview && !multiple ? (
           <div className="flex flex-col items-center gap-2 w-full">
-            {resourceType !== 'raw' ? (
+            {resourceType !== 'raw' && !preview.toLowerCase().includes('.pdf') && !preview.startsWith('data:application/pdf') ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={preview} alt="Preview" className="max-h-32 rounded object-contain" />
             ) : (
-              <div className="flex items-center gap-2 text-green-400">
-                <span>📄</span>
-                <span className="text-sm truncate max-w-[200px]">{preview.split('/').pop()}</span>
+              <div className="flex items-center gap-2 text-green-400 bg-white/5 px-3 py-2 rounded-lg border border-white/10 max-w-full">
+                <span className="text-xl">📄</span>
+                <span className="text-sm truncate max-w-[250px] font-mono">{getDisplayName()}</span>
               </div>
             )}
             <p className="text-xs text-gray-500">Click or drag to replace</p>
@@ -129,7 +153,7 @@ export default function ImageUploader({
           <>
             <span className="text-3xl">📁</span>
             <p className="text-sm text-gray-400 text-center">
-              {multiple ? 'Click or drag multiple image files here' : 'Click or drag file here to upload'}
+              {multiple ? 'Click or drag multiple image files here' : 'Click or drag file here to select'}
             </p>
           </>
         )}

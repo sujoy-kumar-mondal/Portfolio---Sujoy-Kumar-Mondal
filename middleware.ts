@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 /**
- * Next.js Middleware (Protects /admin routes).
- * Supports both standard middleware.ts and proxy conventions.
+ * Next.js Proxy / Middleware (Protects /admin routes).
+ * Never intercepts /api/auth endpoints.
  */
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Skip authentication check for Auth.js API endpoints
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next();
+  }
 
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
     const token = await getToken({
@@ -29,7 +34,7 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const proxy = middleware;
+export default middleware;
 
 export const config = {
   matcher: ['/admin/:path*'],
