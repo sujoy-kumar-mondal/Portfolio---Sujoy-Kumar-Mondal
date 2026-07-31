@@ -1,14 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface CustomCursorProps {
   cursorUrl?: string;
 }
 
 export default function CustomCursor({ cursorUrl: initialUrl }: CustomCursorProps) {
+  const pathname = usePathname();
   const [cursorUrl, setCursorUrl] = useState<string | undefined>(initialUrl);
 
+  const isAdmin = pathname?.startsWith('/admin');
+
   useEffect(() => {
+    if (isAdmin) return;
     if (initialUrl) {
       setCursorUrl(initialUrl);
       return;
@@ -19,10 +24,15 @@ export default function CustomCursor({ cursorUrl: initialUrl }: CustomCursorProp
         if (data?.cursorUrl) setCursorUrl(data.cursorUrl);
       })
       .catch(() => {});
-  }, [initialUrl]);
+  }, [initialUrl, isAdmin]);
 
   useEffect(() => {
-    if (!cursorUrl) return;
+    if (isAdmin || !cursorUrl) {
+      const existing = document.getElementById('custom-cursor-style');
+      if (existing) existing.remove();
+      return;
+    }
+
     const existing = document.getElementById('custom-cursor-style');
     if (existing) existing.remove();
 
@@ -35,7 +45,8 @@ export default function CustomCursor({ cursorUrl: initialUrl }: CustomCursorProp
       const el = document.getElementById('custom-cursor-style');
       if (el) el.remove();
     };
-  }, [cursorUrl]);
+  }, [cursorUrl, isAdmin]);
 
   return null;
 }
+
