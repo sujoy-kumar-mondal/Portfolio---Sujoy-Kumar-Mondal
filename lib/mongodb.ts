@@ -1,4 +1,19 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Fix Node.js DNS SRV query issue (ECONNREFUSED _mongodb._tcp) on Windows & ISP DNS servers
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignore
+}
+
+// Fallback to Google & Cloudflare public DNS if local ISP DNS fails SRV queries
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+} catch {
+  // Ignore
+}
 
 const MONGODB_URI = process.env.MONGODB_URI as string;
 

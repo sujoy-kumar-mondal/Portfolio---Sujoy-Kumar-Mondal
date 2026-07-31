@@ -1,5 +1,9 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import dns from 'dns';
+
+try { dns.setDefaultResultOrder('ipv4first'); } catch {}
+try { dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']); } catch {}
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
