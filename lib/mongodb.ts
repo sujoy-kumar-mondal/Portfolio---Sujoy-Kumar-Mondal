@@ -1,19 +1,9 @@
 import mongoose from 'mongoose';
-import dns from 'dns';
-
-// Fix Node.js DNS SRV query issue on Windows / local network (ECONNREFUSED querySrv)
-try {
-  dns.setDefaultResultOrder('ipv4first');
-} catch {}
-
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4', '1.0.0.1']);
-} catch {}
 
 const MONGODB_URI = process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
+  throw new Error('Please define the MONGODB_URI environment variable in .env.local');
 }
 
 interface MongooseCache {
