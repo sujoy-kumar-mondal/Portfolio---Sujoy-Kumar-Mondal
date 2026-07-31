@@ -7,7 +7,10 @@ export interface ISocialLink extends Document {
   hoverColor: string;
   order: number;
   isActive: boolean;
+  position: 'top' | 'right' | 'both';
 }
+
+delete mongoose.models.SocialLink;
 
 const SocialLinkSchema = new Schema<ISocialLink>({
   platform: { type: String, required: true },
@@ -16,6 +19,7 @@ const SocialLinkSchema = new Schema<ISocialLink>({
   hoverColor: { type: String, default: '#ffffff' },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
+  position: { type: String, enum: ['top', 'right', 'both'], default: 'right' },
 }, { timestamps: true });
 
 const SocialLink: Model<ISocialLink> =

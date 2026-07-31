@@ -11,6 +11,7 @@ const navItems = [
   { label: 'Social Links', href: '/admin/social', icon: '🔗' },
   { label: 'Projects', href: '/admin/projects', icon: '💼' },
   { label: 'Contact', href: '/admin/contact', icon: '📬' },
+  { label: 'Settings', href: '/admin/settings', icon: '⚙️' },
 ];
 
 export default function AdminSidebar() {
@@ -88,7 +89,7 @@ export default function AdminSidebar() {
       >
         {/* Desktop Logo Header */}
         <div className="p-6 border-b border-white/10 hidden md:flex items-center justify-between">
-          <Link href="/" target="_blank" className="flex items-center gap-3">
+          <Link href="/admin/dashboard" className="flex items-center gap-3">
             <svg width="22" viewBox="0 0 224 473" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
               <path d="M75 429L1 472V322L75 281V429Z" fill="url(#sg0)" />
               <path d="M152 322V386L223 344V281L75 196V126L152 171V238.715L223 196V126L1 1V236L152 322Z" fill="url(#sg1)" />

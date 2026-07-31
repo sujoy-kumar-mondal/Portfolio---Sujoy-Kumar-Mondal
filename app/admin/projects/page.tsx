@@ -66,15 +66,16 @@ export default function AdminProjectsPage() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#0a0a0a] text-white">
       <AdminSidebar />
-      <main className="flex-1 p-4 sm:p-6 md:p-8 min-w-0 overflow-x-hidden overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 min-w-0">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          {/* Sticky Header */}
+          <div className="sticky top-0 z-30 bg-[#0a0a0a] py-4 border-b border-white/10 flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Projects</h1>
-              <p className="text-gray-500 text-sm">{projects.length} project{projects.length !== 1 ? 's' : ''} total</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">Projects</h1>
+              <p className="text-gray-500 text-xs sm:text-sm">{projects.length} project{projects.length !== 1 ? 's' : ''} total</p>
             </div>
             <Link href="/admin/projects/new">
-              <button className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold hover:scale-105 transition-transform text-white">
+              <button className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold hover:scale-105 transition-transform text-white">
                 + New Project
               </button>
             </Link>
@@ -99,36 +100,49 @@ export default function AdminProjectsPage() {
           ) : (
             <div className="space-y-3">
               {projects.map((p) => (
-                <div key={p._id} className={`bg-[#111] border rounded-xl p-4 flex items-center gap-4 ${p.isActive ? 'border-white/10' : 'border-white/5 opacity-60'}`}>
-                  {p.mainImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.mainImage} alt={p.name} className="w-16 h-12 object-cover rounded-lg flex-shrink-0" />
-                  ) : (
-                    <div className="w-16 h-12 rounded-lg bg-gradient-to-br from-[#1f2667] to-[#0a0094] flex items-center justify-center flex-shrink-0">
-                      <span className="text-white/30 text-lg font-bold">{p.name[0]}</span>
+                <div key={p._id} className={`bg-[#111] border rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${p.isActive ? 'border-white/10' : 'border-white/5 opacity-60'}`}>
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                    {p.mainImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.mainImage} alt={p.name} className="w-16 h-12 object-cover rounded-lg flex-shrink-0" />
+                    ) : (
+                      <div className="w-16 h-12 rounded-lg bg-gradient-to-br from-[#1f2667] to-[#0a0094] flex items-center justify-center flex-shrink-0">
+                        <span className="text-white/30 text-lg font-bold">{p.name[0]}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 justify-between sm:justify-start">
+                        <p className="font-semibold text-white text-sm sm:text-base truncate" style={{ color: p.accentColor || '#5292ff' }}>
+                          {p.name}
+                        </p>
+                        <span className={`sm:hidden text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0 ${p.isActive ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-white/10 text-gray-400 bg-white/5'}`}>
+                          {p.isActive ? 'Active' : 'Hidden'}
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-xs mt-0.5 truncate">
+                        {p.category}{p.date ? ` • ${p.date}` : ''}
+                      </p>
+                      {p.tags && p.tags.length > 0 && (
+                        <p className="text-gray-500 text-[11px] mt-0.5 truncate">
+                          {p.tags.slice(0, 3).join(', ')}{p.tags.length > 3 ? '...' : ''}
+                        </p>
+                      )}
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white text-sm truncate" style={{ color: p.accentColor || '#5292ff' }}>
-                      {p.name}
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      {p.category}{p.date ? ` • ${p.date}` : ''} • {p.tags?.slice(0, 3).join(', ')}{p.tags?.length && p.tags.length > 3 ? '...' : ''}
-                    </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${p.isActive ? 'border-green-500/30 text-green-400' : 'border-white/10 text-gray-600'}`}>
+
+                  <div className="flex items-center justify-end gap-2 pt-2.5 sm:pt-0 border-t border-white/5 sm:border-0 flex-wrap sm:flex-nowrap">
+                    <span className={`hidden sm:inline-block text-xs px-2.5 py-1 rounded-full border ${p.isActive ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-white/10 text-gray-500 bg-white/5'}`}>
                       {p.isActive ? 'Active' : 'Hidden'}
                     </span>
-                    <Link href={`/projects/${p.slug}`} target="_blank" className="text-xs px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors">
+                    <Link href={`/projects/${p.slug}`} target="_blank" className="flex-1 sm:flex-none text-center text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-gray-300 hover:text-white">
                       View
                     </Link>
-                    <Link href={`/admin/projects/${p._id}/edit`} className="text-xs px-3 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors">
+                    <Link href={`/admin/projects/${p._id}/edit`} className="flex-1 sm:flex-none text-center text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg transition-colors text-white font-medium">
                       Edit
                     </Link>
                     <button
                       onClick={() => { setDeletingId(p._id); setDeletingName(p.name); }}
-                      className="text-xs px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded transition-colors"
+                      className="flex-1 sm:flex-none text-center text-xs px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-colors"
                     >
                       Delete
                     </button>

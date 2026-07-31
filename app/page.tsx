@@ -10,10 +10,13 @@ import LatestWorksButton from '@/components/public/LatestWorksButton';
 import ScrollToTopButton from '@/components/public/ScrollToTopButton';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getProfile() {
   const base = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   try {
-    const res = await fetch(`${base}/api/profile`, { next: { revalidate: 60 } });
+    const res = await fetch(`${base}/api/profile`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -22,7 +25,7 @@ async function getProfile() {
 async function getSocialLinks() {
   const base = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   try {
-    const res = await fetch(`${base}/api/social`, { next: { revalidate: 60 } });
+    const res = await fetch(`${base}/api/social`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch { return []; }
@@ -69,7 +72,7 @@ export default async function HomePage() {
       <section id="section-1" className="flex flex-col justify-between min-h-screen pb-10 xl:pb-0 relative overflow-hidden">
         <SpiderCanvas />
         <div className="relative z-10">
-          <Header phone={phoneVal} whatsapp={whatsappVal} />
+          <Header phone={phoneVal} whatsapp={whatsappVal} links={socialLinks} />
         </div>
 
         {/* Main hero content */}

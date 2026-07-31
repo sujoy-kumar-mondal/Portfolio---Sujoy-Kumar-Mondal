@@ -6,18 +6,27 @@ interface SocialLink {
   url: string;
   svgPath: string;
   hoverColor: string;
+  order?: number;
+  position?: 'top' | 'right' | 'both';
+  isActive?: boolean;
 }
 
 export default function SocialLinks({ links }: { links: SocialLink[] }) {
   if (!links || links.length === 0) return null;
 
+  const rightLinks = links
+    .filter(l => l.isActive !== false && (l.position === 'right' || l.position === 'both' || !l.position))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  if (rightLinks.length === 0) return null;
+
   return (
     <ul className="pointer-events-auto mr-4 sm:mr-8 space-y-4 text-[#b0b2c3] absolute right-0 top-1/2 -translate-y-1/2 z-10">
-      {links.map((link) => (
+      {rightLinks.map((link) => (
         <li key={link._id} className="transition-all duration-200" title={link.platform}>
           <a
             href={link.url}
-            target="_blank"
+            target={link.url.startsWith('http') ? '_blank' : '_self'}
             rel="noopener noreferrer"
             className="block hover:drop-shadow-[0px_0px_10px_rgba(255,255,255,0.8)] transition-all duration-200"
             style={{ color: '#b0b2c3' }}

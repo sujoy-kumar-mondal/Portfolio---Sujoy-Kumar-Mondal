@@ -199,14 +199,14 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-[#0a0a0a] py-4 border-b border-white/10 flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{projectId ? 'Edit Project' : 'New Project'}</h1>
-          <p className="text-gray-500 text-sm">Fill in the project details below</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">{projectId ? 'Edit Project' : 'New Project'}</h1>
+          <p className="text-gray-500 text-xs sm:text-sm">Fill in the project details below</p>
         </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={handleCancel} className="px-4 py-2 rounded-xl border border-white/10 text-sm hover:border-white/30 transition-colors">Cancel</button>
-          <button type="button" onClick={save} disabled={saving} className="px-5 py-2 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white">
+        <div className="flex gap-2.5 sm:gap-3 flex-shrink-0">
+          <button type="button" onClick={handleCancel} className="px-3.5 py-2 rounded-xl border border-white/10 text-xs sm:text-sm hover:border-white/30 transition-colors text-white">Cancel</button>
+          <button type="button" onClick={save} disabled={saving} className="px-4 sm:px-5 py-2 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-50 hover:scale-105 transition-transform text-white">
             {saving ? 'Saving...' : projectId ? 'Update' : 'Create Project'}
           </button>
         </div>
@@ -357,9 +357,6 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
         </div>
       </section>
 
-      <button type="button" onClick={save} disabled={saving} className="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 rounded-xl text-sm font-semibold disabled:opacity-50 hover:scale-[1.01] transition-transform text-white">
-        {saving ? 'Saving...' : projectId ? 'Update Project' : 'Create Project'}
-      </button>
     </div>
   );
 }
