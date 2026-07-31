@@ -50,8 +50,8 @@ export default function SessionGuard() {
       console.error(`Failed to initialize SSE EventSource: ${msg}`);
     }
 
-    // 2. Fallback Polling (Every 10 seconds) & Window Focus Event for sleep/wake recovery
-    fallbackInterval = setInterval(checkSessionFallback, 10000);
+    // 2. Fallback Polling (Every 5 seconds) & Window Focus Event for sleep/wake recovery
+    fallbackInterval = setInterval(checkSessionFallback, 5000);
     const onFocus = () => checkSessionFallback();
     window.addEventListener('focus', onFocus);
 
