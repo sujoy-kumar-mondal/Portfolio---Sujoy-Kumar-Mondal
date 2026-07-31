@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface ImageUploaderProps {
   label?: string;
@@ -27,10 +27,31 @@ export default function ImageUploader({
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    setPreview(currentUrl || '');
+  }, [currentUrl]);
+
+  // Function to delete file from Cloudinary via API
+  const deleteFile = async (urlToDelete: string) => {
+    if (!urlToDelete || !urlToDelete.includes('cloudinary')) return;
+    try {
+      await fetch('/api/upload/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlToDelete }),
+      });
+    } catch (err) {
+      console.error('Failed to delete file from Cloudinary:', err);
+    }
+  };
+
   const handleFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
     setUploading(true);
     setError('');
+
+    // Capture existing file URL before starting new upload
+    const fileToDelete = preview || currentUrl;
 
     const fileArray = Array.from(files);
     const uploadedUrls: string[] = [];
@@ -42,14 +63,21 @@ export default function ImageUploader({
         formData.append('folder', folder);
         formData.append('resourceType', resourceType);
 
+        // 1. Upload new file
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Upload failed');
 
         uploadedUrls.push(data.url);
+
         if (!multiple && onUpload) {
           setPreview(data.url);
           onUpload(data.url);
+
+          // 2. Delete existing file right after successful upload
+          if (fileToDelete && fileToDelete !== data.url) {
+            await deleteFile(fileToDelete);
+          }
         }
       }
 
@@ -111,7 +139,9 @@ export default function ImageUploader({
           accept={accept}
           multiple={multiple}
           className="hidden"
-          onChange={(e) => { if (e.target.files && e.target.files.length > 0) handleFiles(e.target.files); }}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) handleFiles(e.target.files);
+          }}
         />
       </div>
       {error && <p className="text-red-400 text-xs">{error}</p>}
@@ -120,7 +150,10 @@ export default function ImageUploader({
           <input
             type="text"
             value={preview}
-            onChange={(e) => { setPreview(e.target.value); onUpload?.(e.target.value); }}
+            onChange={(e) => {
+              setPreview(e.target.value);
+              onUpload?.(e.target.value);
+            }}
             className="flex-1 bg-white/5 border border-white/20 rounded px-3 py-1.5 text-xs text-gray-400 font-mono"
             placeholder="Or paste URL directly"
           />

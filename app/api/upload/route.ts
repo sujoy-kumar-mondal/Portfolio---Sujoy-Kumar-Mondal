@@ -9,8 +9,10 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const folder = formData.get('folder') as string || 'uploads';
-    const resourceType = (formData.get('resourceType') as 'image' | 'raw' | 'auto') || 'image';
+    const folder = (formData.get('folder') as string) || 'uploads';
+    
+    // Default to 'auto' so Cloudinary correctly categorizes images, PDFs, raw docs, and videos
+    const resourceType = (formData.get('resourceType') as 'image' | 'raw' | 'auto') || 'auto';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -19,7 +21,9 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const url = await uploadToCloudinary(buffer, folder, resourceType);
+    // Pass file.name as the 4th argument so Cloudinary keeps the original filename
+    const url = await uploadToCloudinary(buffer, folder, resourceType, file.name);
+    
     return NextResponse.json({ url });
   } catch (error) {
     console.error('Upload error:', error);

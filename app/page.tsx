@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getProfile() {
-  const base = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const base = process.env.NEXTAUTH_URL;
   try {
     const res = await fetch(`${base}/api/profile`, { cache: 'no-store' });
     if (!res.ok) return null;
@@ -23,7 +23,7 @@ async function getProfile() {
 }
 
 async function getSocialLinks() {
-  const base = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const base = process.env.NEXTAUTH_URL;
   try {
     const res = await fetch(`${base}/api/social`, { cache: 'no-store' });
     if (!res.ok) return [];
@@ -32,7 +32,7 @@ async function getSocialLinks() {
 }
 
 async function getLatestProjects() {
-  const base = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const base = process.env.NEXTAUTH_URL;
   try {
     const res = await fetch(`${base}/api/projects?limit=5`, { next: { revalidate: 60 } });
     if (!res.ok) return [];
@@ -42,7 +42,7 @@ async function getLatestProjects() {
 }
 
 async function getContactInfo() {
-  const base = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const base = process.env.NEXTAUTH_URL;
   try {
     const res = await fetch(`${base}/api/contact`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
@@ -58,12 +58,6 @@ export default async function HomePage() {
     getContactInfo(),
   ]);
 
-  const phoneSocial = socialLinks.find((s: { platform: string; url: string }) => s.platform?.toLowerCase().includes('phone') || s.platform?.toLowerCase().includes('call'));
-  const waSocial = socialLinks.find((s: { platform: string; url: string }) => s.platform?.toLowerCase().includes('whatsapp'));
-
-  const phoneVal = phoneSocial?.url || contactInfo?.phone;
-  const whatsappVal = waSocial?.url || contactInfo?.whatsapp || contactInfo?.phone;
-
   return (
     <>
       <CustomCursor cursorUrl={profile?.cursorUrl} />
@@ -72,7 +66,7 @@ export default async function HomePage() {
       <section id="section-1" className="flex flex-col justify-between min-h-screen pb-10 xl:pb-0 relative overflow-hidden">
         <SpiderCanvas />
         <div className="relative z-10">
-          <Header phone={phoneVal} whatsapp={whatsappVal} links={socialLinks} />
+          <Header links={socialLinks} />
         </div>
 
         {/* Main hero content */}

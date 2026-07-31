@@ -9,7 +9,7 @@ cloudinary.config({
 export async function uploadToCloudinary(
   file: Buffer,
   folder: string,
-  resourceType: 'image' | 'raw' | 'auto' = 'image',
+  resourceType: 'image' | 'raw' | 'auto' = 'auto',
   fileName?: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -17,10 +17,22 @@ export async function uploadToCloudinary(
       folder: `portfolio/${folder}`,
       resource_type: resourceType,
     };
+
     if (fileName) {
-      options.public_id = fileName;
+      if (resourceType === 'raw') {
+        // For RAW files (PDFs, ZIPs), public_id MUST include the extension
+        options.public_id = fileName;
+      } else {
+        // For IMAGES, strip the extension from public_id so Cloudinary handles formatting
+        const lastDotIndex = fileName.lastIndexOf('.');
+        const nameWithoutExt = lastDotIndex !== -1 ? fileName.substring(0, lastDotIndex) : fileName;
+        options.public_id = nameWithoutExt;
+      }
+
       options.use_filename = true;
+      options.unique_filename = true; // Appends a unique hash to prevent file name collisions
     }
+
     const uploadStream = cloudinary.uploader.upload_stream(
       options,
       (error, result) => {
@@ -39,7 +51,12 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
     const uploadIndex = parts.findIndex(p => p === 'upload');
     if (uploadIndex === -1) return;
 
-    // Get everything after /upload/ (and strip version tag if present e.g. v12345678)
+    // Detect resource type directly from the Cloudinary URL structure
+    // Cloudinary URLs look like: .../image/upload/... or .../raw/upload/...
+    const typeFromUrl = parts[uploadIndex - 1]; 
+    const resourceType = ['image', 'raw', 'video'].includes(typeFromUrl) ? typeFromUrl : 'image';
+
+    // Get everything after /upload/ and remove the version tag (e.g., v12345678)
     const pathParts = parts.slice(uploadIndex + 1);
     if (pathParts[0] && /^v\d+$/.test(pathParts[0])) {
       pathParts.shift();
@@ -47,10 +64,11 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
 
     const fullPath = pathParts.join('/');
     const lastDotIndex = fullPath.lastIndexOf('.');
-    const ext = lastDotIndex !== -1 ? fullPath.substring(lastDotIndex + 1).toLowerCase() : '';
-    const publicId = lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath;
-
-    const resourceType = ['pdf', 'raw', 'doc', 'docx', 'zip'].includes(ext) ? 'raw' : 'image';
+    
+    // For raw files, public_id includes the extension. For images, it does not.
+    const publicId = (resourceType === 'raw') 
+      ? fullPath 
+      : (lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath);
 
     await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch (error) {
