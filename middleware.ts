@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 /**
- * Next.js 16 Proxy Convention (replacing deprecated middleware.ts).
- * Protects all /admin routes except /admin/login.
+ * Next.js Middleware (Protects /admin routes).
+ * Supports both standard middleware.ts and proxy conventions.
  */
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
@@ -29,8 +29,7 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Support both 'proxy' and 'middleware' exports for compatibility
-export const middleware = proxy;
+export const proxy = middleware;
 
 export const config = {
   matcher: ['/admin/:path*'],
