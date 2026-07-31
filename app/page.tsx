@@ -91,33 +91,9 @@ export default async function HomePage() {
               <img
                 src={bannerLogo}
                 alt="Banner Logo"
-                className="drop-shadow-[0_0px_60px_rgba(59,130,246,0.8)] absolute h-[380px] top-1/2 xl:-top-8 -translate-y-1/2 xl:-translate-y-0 left-1/2 xl:left-2/3 -translate-x-1/2 xl:-translate-x-1/2 sm:h-[500px] xl:h-[520px] opacity-90 object-contain max-w-[90vw]"
+                className="drop-shadow-[0_0px_60px_rgba(59,130,246,0.8)] absolute h-[450px] top-1/2 xl:-top-2/3 -translate-y-1/2 xl:-translate-y-0 left-1/2 xl:left-2/3 -translate-x-1/2 xl:-translate-x-1/2 xl:rotate-[29deg] xl:mt-12 sm:h-[600px] xl:h-[550px] opacity-90"
               />
-            ) : (
-              <svg
-                className="drop-shadow-[0_0px_60px_rgba(59,130,246,0.8)] absolute h-[380px] top-1/2 xl:-top-8 -translate-y-1/2 xl:-translate-y-0 left-1/2 xl:left-2/3 -translate-x-1/2 xl:-translate-x-1/2 xl:rotate-[29deg] xl:mt-12 sm:h-[500px] xl:h-[520px] opacity-90"
-                viewBox="0 0 224 473" fill="none" xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M9.5 327.5V457L66.5 424V295.5L9.5 327.5Z" fill="url(#p0)" />
-                <path d="M214.5 339L160.5 371V317L9.5 232V15.5L214.5 130.5V191L160.5 223.5V166L66.5 111V201L214.5 286V339Z" fill="url(#p1)" />
-                <path d="M9.5 327.5V457L66.5 424V295.5L9.5 327.5Z" stroke="url(#p2)" strokeWidth="18" />
-                <path d="M214.5 339L160.5 371V317L9.5 232V15.5L214.5 130.5V191L160.5 223.5V166L66.5 111V201L214.5 286V339Z" stroke="url(#p3)" strokeWidth="18" />
-                <defs>
-                  <linearGradient id="p0" x1="112" y1="15.5" x2="112" y2="457" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#00FFE1" /><stop offset="1" stopColor="#03A2DC" />
-                  </linearGradient>
-                  <linearGradient id="p1" x1="112" y1="15.5" x2="112" y2="457" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#00FFE1" /><stop offset="1" stopColor="#03A2DC" />
-                  </linearGradient>
-                  <linearGradient id="p2" x1="112" y1="15.5" x2="112" y2="457" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#53ACFF" /><stop offset="1" stopColor="#0A0094" />
-                  </linearGradient>
-                  <linearGradient id="p3" x1="112" y1="15.5" x2="112" y2="457" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#53ACFF" /><stop offset="1" stopColor="#0A0094" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            )}
+            ) : ""}
 
             <div className="relative ml-6 sm:ml-14 xl:ml-48">
               <h1 className="font-bold text-2xl sm:text-5xl xl:text-6xl tracking-wide" style={{ fontFamily: 'var(--font-nunito)' }}>
