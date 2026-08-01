@@ -11,10 +11,10 @@ export function cleanDescriptionParts(parts: any[]): { text: string; url?: strin
   if (!Array.isArray(parts)) return [];
   return parts
     .map(p => ({
-      text: (p?.text || '').trim(),
+      text: p?.text != null ? String(p.text) : '',
       url: (p?.url || '').trim(),
     }))
-    .filter(p => p.text.length > 0);
+    .filter(p => p.text.trim().length > 0);
 }
 
 export function parseMongooseError(error: any): string {

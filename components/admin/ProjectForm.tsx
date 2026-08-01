@@ -204,8 +204,8 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
     }
 
     const cleanedShortDesc = data.shortDescription
-      .map(p => ({ text: p.text.trim(), url: (p.url || '').trim() }))
-      .filter(p => p.text.length > 0);
+      .map(p => ({ text: p.text || '', url: (p.url || '').trim() }))
+      .filter(p => p.text.trim().length > 0);
 
     if (cleanedShortDesc.length === 0) {
       setError('Short Description text is required. Please fill in the text for description parts.');
@@ -213,8 +213,8 @@ export default function ProjectForm({ initialData, projectId }: ProjectFormProps
     }
 
     const cleanedDesc = data.description
-      .map(p => ({ text: p.text.trim(), url: (p.url || '').trim() }))
-      .filter(p => p.text.length > 0);
+      .map(p => ({ text: p.text || '', url: (p.url || '').trim() }))
+      .filter(p => p.text.trim().length > 0);
 
     if (cleanedDesc.length === 0) {
       setError('Full Description text is required. Please fill in the text for description parts.');

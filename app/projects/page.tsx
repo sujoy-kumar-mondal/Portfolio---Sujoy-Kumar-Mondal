@@ -4,15 +4,44 @@ import Link from 'next/link';
 import { IDescriptionPart } from '@/models/Project';
 
 function RenderDescription({ parts, plainText = false }: { parts: IDescriptionPart[]; plainText?: boolean }) {
+  if (!parts || !Array.isArray(parts)) return null;
   return (
-    <>
-      {parts.map((part, i) =>
-        part.url && !plainText ? (
-          <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline">{part.text}</a>
-        ) : <span key={i}>{part.text}</span>
-      )}
-    </>
+    <span className="whitespace-pre-wrap">
+      {parts.map((part, i) => {
+        if (!part.url || plainText) {
+          return <span key={i}>{part.text}</span>;
+        }
+
+        const prevPart = i > 0 ? parts[i - 1] : null;
+        const nextPart = i < parts.length - 1 ? parts[i + 1] : null;
+
+        let prefixSpace = '';
+        let suffixSpace = '';
+
+        if (prevPart && prevPart.text && !/\s$/.test(prevPart.text) && !/^\s/.test(part.text)) {
+          prefixSpace = ' ';
+        }
+
+        if (nextPart && nextPart.text && !/^\s|[.,!?:;)]/.test(nextPart.text) && !/\s$/.test(part.text)) {
+          suffixSpace = ' ';
+        }
+
+        return (
+          <span key={i}>
+            {prefixSpace}
+            <a
+              href={part.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              {part.text}
+            </a>
+            {suffixSpace}
+          </span>
+        );
+      })}
+    </span>
   );
 }
 
