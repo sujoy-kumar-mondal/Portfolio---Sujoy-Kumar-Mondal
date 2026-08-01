@@ -21,6 +21,7 @@ export interface IMetadata extends Omit<Document, '_id'> {
     bannerLogo?: string;
   };
   cursorUrl?: string;
+  showDateTime?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -46,6 +47,7 @@ const MetadataSchema = new Schema<IMetadata>(
       bannerLogo: { type: String, default: '' },
     },
     cursorUrl: { type: String, default: '' },
+    showDateTime: { type: Boolean, default: true },
   },
   { 
     timestamps: true,

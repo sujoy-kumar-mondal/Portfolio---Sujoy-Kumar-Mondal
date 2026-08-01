@@ -79,7 +79,7 @@ export default async function HomePage() {
       <section id="section-1" className="flex flex-col justify-between min-h-screen pb-10 xl:pb-0 relative overflow-hidden">
         <SpiderCanvas />
         <div className="relative z-10">
-          <Header links={socialLinks} logoUrl={navbarLogo} />
+          <Header links={socialLinks} logoUrl={navbarLogo} showDateTime={metadata?.showDateTime !== false} />
         </div>
 
         {/* Main hero content */}

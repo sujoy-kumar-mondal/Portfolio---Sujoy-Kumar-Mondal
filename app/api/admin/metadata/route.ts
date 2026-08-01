@@ -32,9 +32,13 @@ export async function GET() {
           bannerLogo: '',
         },
         cursorUrl: '',
+        showDateTime: true,
       });
     }
-    return NextResponse.json(meta);
+    return NextResponse.json({
+      ...meta,
+      showDateTime: meta.showDateTime ?? true,
+    });
   } catch (error) {
     console.error('Error fetching admin metadata:', error);
     return NextResponse.json({ error: 'Failed to fetch metadata' }, { status: 500 });
@@ -95,6 +99,7 @@ export async function PUT(req: NextRequest) {
           bannerLogo: data.logos?.bannerLogo || '',
         },
         cursorUrl: data.cursorUrl || '',
+        showDateTime: typeof data.showDateTime === 'boolean' ? data.showDateTime : true,
       },
       { new: true, upsert: true }
     );

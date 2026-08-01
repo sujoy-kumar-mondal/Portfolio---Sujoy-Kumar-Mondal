@@ -31,6 +31,7 @@ interface MetadataData {
     bannerLogo?: string;
   };
   cursorUrl?: string;
+  showDateTime?: boolean;
 }
 
 export default function AdminSettingsPage() {
@@ -46,6 +47,7 @@ export default function AdminSettingsPage() {
   const [metaTitle, setMetaTitle] = useState('');
   const [metaDescription, setMetaDescription] = useState('');
   const [keywordsStr, setKeywordsStr] = useState('');
+  const [showDateTime, setShowDateTime] = useState(true);
 
   const [faviconUrl, setFaviconUrl] = useState('');
   const [pendingFaviconFile, setPendingFaviconFile] = useState<File | null>(null);
@@ -121,6 +123,7 @@ export default function AdminSettingsPage() {
 
     setCursorUrl(meta.cursorUrl || '');
     setInitialCursorUrl(meta.cursorUrl || '');
+    setShowDateTime(meta.showDateTime !== false);
 
     setPendingFaviconFile(null);
     setPendingNavbarLogoFile(null);
@@ -181,6 +184,7 @@ export default function AdminSettingsPage() {
           bannerLogo: finalBannerLogo,
         },
         cursorUrl,
+        showDateTime,
       };
 
       const res = await fetch('/api/admin/metadata', {
@@ -480,6 +484,23 @@ export default function AdminSettingsPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 transition-colors resize-none"
                   />
                 </div>
+              </div>
+
+              {/* Navbar Date & Time Display Toggle */}
+              <div className="border-t border-white/10 pt-5 space-y-3">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Navbar Date & Time Display</h3>
+                <label className="flex items-center justify-between p-3.5 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:border-white/20 transition-colors">
+                  <div>
+                    <span className="text-sm font-medium text-white block font-semibold">Show Live Date & Time in Navbar</span>
+                    <span className="text-xs text-gray-400 block mt-0.5">Display the live real-time clock above top-right navbar social links</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={showDateTime}
+                    onChange={e => setShowDateTime(e.target.checked)}
+                    className="w-5 h-5 accent-pink-500 rounded cursor-pointer"
+                  />
+                </label>
               </div>
             </section>
 

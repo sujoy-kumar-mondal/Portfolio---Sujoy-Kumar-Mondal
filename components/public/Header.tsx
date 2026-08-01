@@ -16,6 +16,7 @@ export interface HeaderSocialLink {
 interface HeaderProps {
   links?: HeaderSocialLink[];
   logoUrl?: string;
+  showDateTime?: boolean;
 }
 
 function formatDateTime(d: Date): string {
@@ -36,7 +37,7 @@ function formatDateTime(d: Date): string {
   return `${day}-${month}-${year} ${formattedHours}:${minutes}:${seconds} ${ampm}`;
 }
 
-export default function Header({ links, logoUrl }: HeaderProps) {
+export default function Header({ links, logoUrl, showDateTime = true }: HeaderProps) {
   const router = useRouter();
   const [darkMode, setDarkMode] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -142,7 +143,7 @@ export default function Header({ links, logoUrl }: HeaderProps) {
       </Link>
       <div className="flex flex-col items-end justify-center pointer-events-auto gap-0.5">
         {/* Live Internet Date & Time (Positioned Above Social Links) */}
-        {mounted && timeStr && (
+        {mounted && showDateTime && timeStr && (
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-md font-mono text-[10px] sm:text-[11px] text-gray-300 tracking-wider shadow-sm select-none">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Live Time Sync" />
             <span className="font-semibold text-gray-200">{timeStr}</span>

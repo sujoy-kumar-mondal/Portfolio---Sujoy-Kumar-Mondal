@@ -8,7 +8,7 @@ export async function GET() {
     const meta = await MetadataModel.findById('site_metadata').lean();
     if (!meta) {
       return NextResponse.json({
-        _id: '',
+        _id: 'site_metadata',
         title: '',
         description: '',
         keywords: [],
@@ -27,9 +27,13 @@ export async function GET() {
           bannerLogo: '',
         },
         cursorUrl: '',
+        showDateTime: true,
       });
     }
-    return NextResponse.json(meta);
+    return NextResponse.json({
+      ...meta,
+      showDateTime: meta.showDateTime ?? true,
+    });
   } catch (error) {
     console.error('Failed to fetch metadata:', error);
     return NextResponse.json({ error: 'Failed to fetch metadata' }, { status: 500 });
