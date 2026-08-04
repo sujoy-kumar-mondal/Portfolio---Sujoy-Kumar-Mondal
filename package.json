@@ -1,5 +1,5 @@
 {
-  "name": "skm-portfolio",
+  "name": "portfolio-cms",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/seed.ts"
+    "seed": "npx tsx scripts/seed.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
